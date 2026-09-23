@@ -50,7 +50,7 @@ class NDS_HR_Admin_Settings {
 		$action = sanitize_key( wp_unslash( $_POST['nds_hr_settings_action'] ) );
 
 		// 1. Verify CSRF Nonce
-		if ( ! isset( $_POST['_nds_hr_settings_nonce'] ) || ! NDS_HR_Security::verify_nonce( sanitize_text_field( wp_unslash( $_POST['_nds_hr_settings_nonce'] ) ), self::NONCE_ACTION ) ) {
+		if ( ! isset( $_POST['_nds_hr_settings_nonce'] ) || ! NDS_HR_Security::verify_nonce( self::NONCE_ACTION, '_nds_hr_settings_nonce' ) ) {
 			wp_die(
 				esc_html__( 'Security check failed. Please refresh the page and try again.', 'nds-hr' ),
 				esc_html__( 'Authorization Error', 'nds-hr' ),
