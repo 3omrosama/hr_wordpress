@@ -581,7 +581,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
           <div className="inline-flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setIsAddModalOpen(true)}
-              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 w-auto max-w-fit shrink-0 bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors whitespace-nowrap"
+              className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 w-auto max-w-fit shrink-0 bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors whitespace-nowrap"
             >
               <Plus className="w-3.5 h-3.5 shrink-0" />
               <span>{isArabic ? 'إضافة موظف' : 'Add Employee'}</span>
@@ -589,7 +589,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
             <button
               onClick={() => onSelectEmployeeForPortal(employees[0])}
-              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 w-auto max-w-fit shrink-0 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 hover:border-slate-400 text-xs font-semibold rounded-lg shadow-xs transition-colors whitespace-nowrap"
+              className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 w-auto max-w-fit shrink-0 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 hover:border-slate-400 text-xs font-semibold rounded-lg shadow-xs transition-colors whitespace-nowrap"
             >
               <ExternalLink className="w-3.5 h-3.5 shrink-0 text-slate-500" />
               <span>{isArabic ? 'بوابة الموظف' : 'Employee Portal'}</span>
@@ -920,7 +920,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
               <button
                 type="button"
                 onClick={() => setIsAddModalOpen(true)}
-                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 w-auto max-w-fit shrink-0 bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors whitespace-nowrap ml-auto"
+                className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 w-auto max-w-fit shrink-0 bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors whitespace-nowrap ml-auto"
               >
                 <Plus className="w-3.5 h-3.5 shrink-0" />
                 <span>{isArabic ? 'إضافة موظف' : 'Add Employee'}</span>
