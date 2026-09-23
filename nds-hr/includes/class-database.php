@@ -116,6 +116,35 @@ class NDS_HR_Database {
 		if ( version_compare( $from_version, '2.1.0', '<' ) ) {
 			self::upgrade_employees_table_v2_1();
 		}
+
+		// Phase 2.2 Salary Currency & Optional Compensation (v2.2.0)
+		if ( version_compare( $from_version, '2.2.0', '<' ) ) {
+			self::upgrade_employees_table_v2_2();
+		}
+	}
+
+	/**
+	 * Non-destructively add salary_currency and make basic_salary optional in employees table.
+	 */
+	protected static function upgrade_employees_table_v2_2() {
+		global $wpdb;
+
+		$employees_table = self::employees_table();
+
+		// Check if column salary_currency exists
+		$column_exists = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = 'salary_currency'",
+				$employees_table
+			)
+		);
+
+		if ( empty( $column_exists ) ) {
+			$wpdb->query( "ALTER TABLE `{$employees_table}` ADD COLUMN `salary_currency` varchar(10) NOT NULL DEFAULT 'EGP' AFTER `basic_salary`" );
+		}
+
+		// Allow basic_salary to be NULL for optional input
+		$wpdb->query( "ALTER TABLE `{$employees_table}` MODIFY COLUMN `basic_salary` decimal(12,2) DEFAULT NULL" );
 	}
 
 	/**
@@ -509,7 +538,8 @@ class NDS_HR_Database {
 			contract_document_url text DEFAULT NULL,
 			contract_document_name varchar(255) DEFAULT '',
 			manager_id bigint(20) unsigned DEFAULT NULL,
-			basic_salary decimal(12,2) NOT NULL DEFAULT 0.00,
+			basic_salary decimal(12,2) DEFAULT NULL,
+			salary_currency varchar(10) NOT NULL DEFAULT 'EGP',
 			profile_photo_url text DEFAULT NULL,
 			address text DEFAULT NULL,
 			emergency_contact_name varchar(100) DEFAULT '',

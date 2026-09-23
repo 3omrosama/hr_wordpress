@@ -181,8 +181,14 @@ $contract_duration        = ! empty( $employee->contract_start_date ) ? NDS_HR_S
 						<dd><?php echo esc_html( $formatted_hire_date ); ?></dd>
 					</div>
 					<div>
-						<dt><?php esc_html_e( 'Basic Salary Placeholder', 'nds-hr' ); ?></dt>
-						<dd><?php echo esc_html( number_format_i18n( (float) $employee->basic_salary, 2 ) ); ?></dd>
+						<dt><?php esc_html_e( 'Basic Salary', 'nds-hr' ); ?></dt>
+						<dd>
+							<?php if ( isset( $employee->basic_salary ) && null !== $employee->basic_salary && '' !== $employee->basic_salary && (float) $employee->basic_salary > 0 ) : ?>
+								<strong><?php echo esc_html( number_format_i18n( (float) $employee->basic_salary, 2 ) . ' ' . ( ! empty( $employee->salary_currency ) ? $employee->salary_currency : 'EGP' ) ); ?></strong>
+							<?php else : ?>
+								<span class="nds-hr-muted-text"><?php esc_html_e( 'Not specified', 'nds-hr' ); ?></span>
+							<?php endif; ?>
+						</dd>
 					</div>
 				</dl>
 			</div>

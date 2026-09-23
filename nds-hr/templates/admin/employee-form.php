@@ -54,6 +54,14 @@ $current_account_role = 'hr_employee';
 if ( ! empty( $hr_user ) && ! empty( $hr_user->role_slug ) ) {
 	$current_account_role = $hr_user->role_slug;
 }
+
+// Basic Salary & Currency (Optional)
+$salary_value = '';
+if ( $is_edit && isset( $employee->basic_salary ) && null !== $employee->basic_salary && '' !== $employee->basic_salary ) {
+	$salary_num = (float) $employee->basic_salary;
+	$salary_value = $salary_num > 0 ? number_format( $salary_num, 2, '.', '' ) : '';
+}
+$salary_currency = $is_edit && ! empty( $employee->salary_currency ) ? $employee->salary_currency : 'EGP';
 ?>
 
 <div class="nds-hr-wrap" dir="<?php echo esc_attr( $dir ); ?>">
@@ -169,21 +177,27 @@ if ( ! empty( $hr_user ) && ! empty( $hr_user->role_slug ) ) {
 					</div>
 
 					<div class="nds-hr-fields-row">
-						<!-- Date of Birth (DD/MM/YYYY) -->
+						<!-- Date of Birth (DD/MM/YYYY) with Mini Calendar -->
 						<div class="nds-hr-field-group">
 							<label class="nds-hr-label" for="date_of_birth">
-								<?php esc_html_e( 'Date of Birth (DD/MM/YYYY)', 'nds-hr' ); ?>
+								<?php esc_html_e( 'Date of Birth', 'nds-hr' ); ?>
+								<small class="nds-hr-muted-text" style="font-weight: normal; margin-left: 4px;">(DD/MM/YYYY)</small>
 							</label>
-							<input
-								type="text"
-								id="date_of_birth"
-								name="date_of_birth"
-								value="<?php echo esc_attr( $formatted_dob ); ?>"
-								class="nds-hr-input js-date-field"
-								placeholder="DD/MM/YYYY (e.g. 15/05/1990)"
-								pattern="(0[1-9]|[12][0-9]|3[01])[\/\-](0[1-9]|1[012])[\/\-]\d{4}"
-							>
-							<small class="nds-hr-help-text"><?php esc_html_e( 'Day / Month / Year format', 'nds-hr' ); ?></small>
+							<div class="nds-hr-datepicker-wrap">
+								<input
+									type="text"
+									id="date_of_birth"
+									name="date_of_birth"
+									value="<?php echo esc_attr( $formatted_dob ); ?>"
+									class="nds-hr-input js-datepicker js-date-field"
+									placeholder="DD/MM/YYYY"
+									autocomplete="off"
+								>
+								<button type="button" class="nds-hr-datepicker-btn js-datepicker-toggle" aria-label="<?php esc_attr_e( 'Choose date', 'nds-hr' ); ?>">
+									<span class="dashicons dashicons-calendar-alt"></span>
+								</button>
+							</div>
+							<small class="nds-hr-help-text"><?php esc_html_e( 'Click to select date visually from calendar.', 'nds-hr' ); ?></small>
 						</div>
 
 						<!-- Gender -->
@@ -298,19 +312,27 @@ if ( ! empty( $hr_user ) && ! empty( $hr_user->role_slug ) ) {
 							>
 						</div>
 
-						<!-- Hire Date -->
+						<!-- Hire Date with Mini Calendar -->
 						<div class="nds-hr-field-group">
-							<label class="nds-hr-label" for="hire_date"><?php esc_html_e( 'Hire Date (DD/MM/YYYY) *', 'nds-hr' ); ?></label>
-							<input
-								type="text"
-								id="hire_date"
-								name="hire_date"
-								value="<?php echo esc_attr( $formatted_hire_date ); ?>"
-								required
-								class="nds-hr-input js-date-field"
-								placeholder="DD/MM/YYYY"
-								pattern="(0[1-9]|[12][0-9]|3[01])[\/\-](0[1-9]|1[012])[\/\-]\d{4}"
-							>
+							<label class="nds-hr-label" for="hire_date">
+								<?php esc_html_e( 'Hire Date *', 'nds-hr' ); ?>
+								<small class="nds-hr-muted-text" style="font-weight: normal; margin-left: 4px;">(DD/MM/YYYY)</small>
+							</label>
+							<div class="nds-hr-datepicker-wrap">
+								<input
+									type="text"
+									id="hire_date"
+									name="hire_date"
+									value="<?php echo esc_attr( $formatted_hire_date ); ?>"
+									required
+									class="nds-hr-input js-datepicker js-date-field"
+									placeholder="DD/MM/YYYY"
+									autocomplete="off"
+								>
+								<button type="button" class="nds-hr-datepicker-btn js-datepicker-toggle" aria-label="<?php esc_attr_e( 'Choose date', 'nds-hr' ); ?>">
+									<span class="dashicons dashicons-calendar-alt"></span>
+								</button>
+							</div>
 						</div>
 					</div>
 
@@ -354,17 +376,30 @@ if ( ! empty( $hr_user ) && ! empty( $hr_user->role_slug ) ) {
 							</select>
 						</div>
 
-						<!-- Basic Salary Placeholder -->
+						<!-- Basic Salary (Optional + Currency Selector) -->
 						<div class="nds-hr-field-group">
-							<label class="nds-hr-label" for="basic_salary"><?php esc_html_e( 'Basic Salary Placeholder', 'nds-hr' ); ?></label>
-							<input
-								type="number"
-								step="0.01"
-								id="basic_salary"
-								name="basic_salary"
-								value="<?php echo esc_attr( $is_edit ? $employee->basic_salary : '0.00' ); ?>"
-								class="nds-hr-input"
-							>
+							<label class="nds-hr-label" for="basic_salary">
+								<?php esc_html_e( 'Basic Salary', 'nds-hr' ); ?>
+								<small class="nds-hr-muted-text" style="font-weight: normal; margin-left: 4px;">(<?php esc_html_e( 'Optional', 'nds-hr' ); ?>)</small>
+							</label>
+							<div class="nds-hr-salary-input-group" style="display: flex; gap: 6px;">
+								<select id="salary_currency" name="salary_currency" class="nds-hr-select" style="width: 140px; flex-shrink: 0;">
+									<option value="EGP" <?php selected( $salary_currency, 'EGP' ); ?>>EGP — <?php esc_html_e( 'Egyptian Pound', 'nds-hr' ); ?> (ج.م)</option>
+									<option value="SAR" <?php selected( $salary_currency, 'SAR' ); ?>>SAR — <?php esc_html_e( 'Saudi Riyal', 'nds-hr' ); ?> (ر.س)</option>
+								</select>
+								<input
+									type="number"
+									step="0.01"
+									min="0"
+									id="basic_salary"
+									name="basic_salary"
+									value="<?php echo esc_attr( $salary_value ); ?>"
+									class="nds-hr-input"
+									placeholder="0.00"
+									style="flex: 1;"
+								>
+							</div>
+							<small class="nds-hr-help-text"><?php esc_html_e( 'Optional compensation amount. ISO currency code stored separately.', 'nds-hr' ); ?></small>
 						</div>
 					</div>
 				</div>
@@ -402,35 +437,48 @@ if ( ! empty( $hr_user ) && ! empty( $hr_user->role_slug ) ) {
 					</div>
 
 					<div class="nds-hr-fields-row">
-						<!-- Contract Start Date -->
+						<!-- Contract Start Date with Mini Calendar -->
 						<div class="nds-hr-field-group">
-							<label class="nds-hr-label" for="contract_start_date"><?php esc_html_e( 'Contract Start Date (DD/MM/YYYY)', 'nds-hr' ); ?></label>
-							<input
-								type="text"
-								id="contract_start_date"
-								name="contract_start_date"
-								value="<?php echo esc_attr( $formatted_contract_start ); ?>"
-								class="nds-hr-input js-contract-date js-date-field"
-								placeholder="DD/MM/YYYY"
-								pattern="(0[1-9]|[12][0-9]|3[01])[\/\-](0[1-9]|1[012])[\/\-]\d{4}"
-							>
+							<label class="nds-hr-label" for="contract_start_date">
+								<?php esc_html_e( 'Contract Start Date', 'nds-hr' ); ?>
+								<small class="nds-hr-muted-text" style="font-weight: normal; margin-left: 4px;">(DD/MM/YYYY)</small>
+							</label>
+							<div class="nds-hr-datepicker-wrap">
+								<input
+									type="text"
+									id="contract_start_date"
+									name="contract_start_date"
+									value="<?php echo esc_attr( $formatted_contract_start ); ?>"
+									class="nds-hr-input js-datepicker js-contract-date js-date-field"
+									placeholder="DD/MM/YYYY"
+									autocomplete="off"
+								>
+								<button type="button" class="nds-hr-datepicker-btn js-datepicker-toggle" aria-label="<?php esc_attr_e( 'Choose date', 'nds-hr' ); ?>">
+									<span class="dashicons dashicons-calendar-alt"></span>
+								</button>
+							</div>
 						</div>
 
-						<!-- Contract End Date -->
+						<!-- Contract End Date with Mini Calendar -->
 						<div class="nds-hr-field-group">
 							<label class="nds-hr-label" for="contract_end_date">
-								<?php esc_html_e( 'Contract End Date (DD/MM/YYYY)', 'nds-hr' ); ?>
+								<?php esc_html_e( 'Contract End Date', 'nds-hr' ); ?>
 								<small class="nds-hr-muted-text" style="font-weight: normal; margin-left: 4px;">(<?php esc_html_e( 'Leave empty for open-ended', 'nds-hr' ); ?>)</small>
 							</label>
-							<input
-								type="text"
-								id="contract_end_date"
-								name="contract_end_date"
-								value="<?php echo esc_attr( $formatted_contract_end ); ?>"
-								class="nds-hr-input js-contract-date js-date-field"
-								placeholder="DD/MM/YYYY"
-								pattern="(0[1-9]|[12][0-9]|3[01])[\/\-](0[1-9]|1[012])[\/\-]\d{4}"
-							>
+							<div class="nds-hr-datepicker-wrap">
+								<input
+									type="text"
+									id="contract_end_date"
+									name="contract_end_date"
+									value="<?php echo esc_attr( $formatted_contract_end ); ?>"
+									class="nds-hr-input js-datepicker js-contract-date js-date-field"
+									placeholder="DD/MM/YYYY"
+									autocomplete="off"
+								>
+								<button type="button" class="nds-hr-datepicker-btn js-datepicker-toggle" aria-label="<?php esc_attr_e( 'Choose date', 'nds-hr' ); ?>">
+									<span class="dashicons dashicons-calendar-alt"></span>
+								</button>
+							</div>
 						</div>
 					</div>
 

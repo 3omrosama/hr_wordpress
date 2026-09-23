@@ -1,7 +1,8 @@
 /**
  * NDS HR — Admin Interactions JavaScript
- * Enhances Employee Form with live phone country formatting, photo preview,
- * contract duration calculation, and independent NDS HR credential management.
+ * Enhances Employee Form with visual mini-calendar date pickers (DD/MM/YYYY),
+ * live phone country formatting, photo preview, contract duration calculation,
+ * and independent NDS HR credential management.
  *
  * @package NDS_HR
  */
@@ -11,49 +12,38 @@
 
 	$(document).ready(function() {
 
-		// Helper: Generate a cryptographically secure random password
-		function generateSecurePassword(length) {
-			length = length || 14;
-			var uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-			var lowercase = 'abcdefghijkmnopqrstuvwxyz';
-			var numbers = '23456789';
-			var symbols = '!@#$%^&*()-_=+[]{}';
-			var allChars = uppercase + lowercase + numbers + symbols;
+		var isRtl = Boolean(window.ndsHrAdminData && window.ndsHrAdminData.isRtl);
 
-			var password = '';
-			// Guarantee at least one of each character category
-			password += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
-			password += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
-			password += numbers.charAt(Math.floor(Math.random() * numbers.length));
-			password += symbols.charAt(Math.floor(Math.random() * symbols.length));
+		var monthNamesEn = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+		var monthNamesAr = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+		var weekDaysEn   = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+		var weekDaysAr   = ['أحد', 'إثن', 'ثلا', 'أرب', 'خمي', 'جمع', 'سبت'];
 
-			for (var i = password.length; i < length; i++) {
-				password += allChars.charAt(Math.floor(Math.random() * allChars.length));
-			}
+		var months   = isRtl ? monthNamesAr : monthNamesEn;
+		var weekdays = isRtl ? weekDaysAr : weekDaysEn;
 
-			// Shuffle password characters
-			return password.split('').sort(function() { return 0.5 - Math.random(); }).join('');
+		// =========================================================================
+		// 1. Interactive Visual Mini-Calendar Date Picker System
+		// =========================================================================
+
+		var $activeDatePickerInput = null;
+		var $calendarPopup = null;
+		var currentCalYear = new Date().getFullYear();
+		var currentCalMonth = new Date().getMonth(); // 0-11
+
+		// Format day and month as two digits (DD/MM/YYYY)
+		function pad2(num) {
+			return (num < 10 ? '0' : '') + num;
 		}
 
-		// Helper: Update live credentials preview in form
-		function updateLiveCredentialsPreview() {
-			var username = $('#account_username').val() || '';
-			var password = $('#account_password').val() || '';
-			var empCode  = $('#employee_id').val() || '';
-
-			if (username && password) {
-				var previewText = 'Employee ID: ' + empCode + '\nUsername: ' + username + '\nTemporary Password: ' + password;
-				$('#nds-hr-live-creds-text').text(previewText);
-				$('#nds-hr-live-credentials-preview').slideDown(150);
-			} else {
-				$('#nds-hr-live-credentials-preview').slideUp(150);
-			}
+		function formatDateDMY(d, m, y) {
+			return pad2(d) + '/' + pad2(m + 1) + '/' + y;
 		}
 
 		// Helper: Parse DD/MM/YYYY or YYYY-MM-DD into JS Date object
 		function parseDateStr(str) {
 			if (!str) return null;
-			str = str.trim();
+			str = String(str).trim();
 			// Match DD/MM/YYYY or DD-MM-YYYY
 			var dmyMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
 			if (dmyMatch) {
@@ -73,20 +63,257 @@
 			return null;
 		}
 
-		// Helper: Calculate duration between start and end dates
+		function createCalendarDOM() {
+			if ($('#nds-hr-calendar-popup').length) {
+				return $('#nds-hr-calendar-popup');
+			}
+
+			var html = '<div id="nds-hr-calendar-popup" class="nds-hr-mini-calendar" style="display:none;" dir="' + (isRtl ? 'rtl' : 'ltr') + '">' +
+				'<div class="nds-hr-cal-header">' +
+					'<button type="button" class="nds-hr-cal-nav-btn js-cal-prev" title="Previous Month">' +
+						'<span class="dashicons dashicons-arrow-' + (isRtl ? 'right' : 'left') + '-alt2"></span>' +
+					'</button>' +
+					'<div class="nds-hr-cal-selects">' +
+						'<select class="nds-hr-cal-select js-cal-month-select"></select>' +
+						'<select class="nds-hr-cal-select js-cal-year-select"></select>' +
+					'</div>' +
+					'<button type="button" class="nds-hr-cal-nav-btn js-cal-next" title="Next Month">' +
+						'<span class="dashicons dashicons-arrow-' + (isRtl ? 'left' : 'right') + '-alt2"></span>' +
+					'</button>' +
+				'</div>' +
+				'<div class="nds-hr-cal-weekdays"></div>' +
+				'<div class="nds-hr-cal-days"></div>' +
+				'<div class="nds-hr-cal-footer">' +
+					'<button type="button" class="nds-hr-cal-action-btn nds-hr-cal-today-btn js-cal-today">' + (isRtl ? 'اليوم' : 'Today') + '</button>' +
+					'<button type="button" class="nds-hr-cal-action-btn nds-hr-cal-clear-btn js-cal-clear">' + (isRtl ? 'مسح' : 'Clear') + '</button>' +
+				'</div>' +
+			'</div>';
+
+			var $popup = $(html).appendTo('body');
+
+			// Populate month options
+			var $monthSelect = $popup.find('.js-cal-month-select');
+			for (var m = 0; m < 12; m++) {
+				$monthSelect.append('<option value="' + m + '">' + months[m] + '</option>');
+			}
+
+			// Populate year options (from 1930 to currentYear + 20)
+			var $yearSelect = $popup.find('.js-cal-year-select');
+			var maxYear = new Date().getFullYear() + 20;
+			var minYear = 1930;
+			for (var y = maxYear; y >= minYear; y--) {
+				$yearSelect.append('<option value="' + y + '">' + y + '</option>');
+			}
+
+			// Populate weekday headers
+			var $weekdays = $popup.find('.nds-hr-cal-weekdays');
+			for (var w = 0; w < 7; w++) {
+				$weekdays.append('<div>' + weekdays[w] + '</div>');
+			}
+
+			// Bind month & year select change
+			$monthSelect.on('change', function() {
+				currentCalMonth = parseInt($(this).val(), 10);
+				renderCalendarGrid();
+			});
+
+			$yearSelect.on('change', function() {
+				currentCalYear = parseInt($(this).val(), 10);
+				renderCalendarGrid();
+			});
+
+			// Bind Prev / Next buttons
+			$popup.find('.js-cal-prev').on('click', function(e) {
+				e.preventDefault();
+				currentCalMonth--;
+				if (currentCalMonth < 0) {
+					currentCalMonth = 11;
+					currentCalYear--;
+				}
+				renderCalendarGrid();
+			});
+
+			$popup.find('.js-cal-next').on('click', function(e) {
+				e.preventDefault();
+				currentCalMonth++;
+				if (currentCalMonth > 11) {
+					currentCalMonth = 0;
+					currentCalYear++;
+				}
+				renderCalendarGrid();
+			});
+
+			// Bind Today button
+			$popup.find('.js-cal-today').on('click', function(e) {
+				e.preventDefault();
+				if ($activeDatePickerInput && $activeDatePickerInput.length) {
+					var today = new Date();
+					var formatted = formatDateDMY(today.getDate(), today.getMonth(), today.getFullYear());
+					$activeDatePickerInput.val(formatted).trigger('input').trigger('change');
+				}
+				closeCalendar();
+			});
+
+			// Bind Clear button
+			$popup.find('.js-cal-clear').on('click', function(e) {
+				e.preventDefault();
+				if ($activeDatePickerInput && $activeDatePickerInput.length) {
+					$activeDatePickerInput.val('').trigger('input').trigger('change');
+				}
+				closeCalendar();
+			});
+
+			// Prevent calendar clicks from closing itself
+			$popup.on('click', function(e) {
+				e.stopPropagation();
+			});
+
+			return $popup;
+		}
+
+		function renderCalendarGrid() {
+			if (!$calendarPopup) return;
+
+			$calendarPopup.find('.js-cal-month-select').val(currentCalMonth);
+			$calendarPopup.find('.js-cal-year-select').val(currentCalYear);
+
+			var $daysGrid = $calendarPopup.find('.nds-hr-cal-days');
+			$daysGrid.empty();
+
+			var firstDayIndex = new Date(currentCalYear, currentCalMonth, 1).getDay(); // 0 = Sunday
+			var daysInMonth = new Date(currentCalYear, currentCalMonth + 1, 0).getDate();
+
+			// Selected date in active input
+			var selectedDate = $activeDatePickerInput ? parseDateStr($activeDatePickerInput.val()) : null;
+			var today = new Date();
+
+			// Empty cells before day 1
+			for (var i = 0; i < firstDayIndex; i++) {
+				$daysGrid.append('<button type="button" class="nds-hr-cal-day empty" tabindex="-1" disabled></button>');
+			}
+
+			// Days of current month
+			for (var day = 1; day <= daysInMonth; day++) {
+				var isToday = (today.getFullYear() === currentCalYear && today.getMonth() === currentCalMonth && today.getDate() === day);
+				var isSelected = (selectedDate && selectedDate.getFullYear() === currentCalYear && selectedDate.getMonth() === currentCalMonth && selectedDate.getDate() === day);
+
+				var dayClass = 'nds-hr-cal-day';
+				if (isToday) dayClass += ' today';
+				if (isSelected) dayClass += ' selected';
+
+				var $btn = $('<button type="button" class="' + dayClass + '" data-day="' + day + '">' + day + '</button>');
+				$daysGrid.append($btn);
+			}
+
+			// Attach click handler for days
+			$daysGrid.find('.nds-hr-cal-day:not(.empty)').on('click', function(e) {
+				e.preventDefault();
+				var chosenDay = parseInt($(this).data('day'), 10);
+				var formattedVal = formatDateDMY(chosenDay, currentCalMonth, currentCalYear);
+
+				if ($activeDatePickerInput && $activeDatePickerInput.length) {
+					$activeDatePickerInput.val(formattedVal).trigger('input').trigger('change');
+				}
+				closeCalendar();
+			});
+		}
+
+		function openCalendarFor($input) {
+			$activeDatePickerInput = $input;
+			$calendarPopup = createCalendarDOM();
+
+			// Parse existing value or default to current date
+			var existingDate = parseDateStr($input.val());
+			if (existingDate && !isNaN(existingDate.getTime())) {
+				currentCalYear = existingDate.getFullYear();
+				currentCalMonth = existingDate.getMonth();
+			} else {
+				var now = new Date();
+				currentCalYear = now.getFullYear();
+				currentCalMonth = now.getMonth();
+			}
+
+			renderCalendarGrid();
+
+			// Position calendar under the input
+			var inputOffset = $input.offset();
+			var inputHeight = $input.outerHeight();
+			var inputWidth  = $input.outerWidth();
+			var calHeight   = 290;
+			var calWidth    = 296;
+
+			var top = inputOffset.top + inputHeight + 4;
+			var left = inputOffset.left;
+
+			// Viewport bounds check (vertical)
+			var windowScrollTop = $(window).scrollTop();
+			var windowHeight = $(window).height();
+			if (top + calHeight > windowScrollTop + windowHeight && inputOffset.top - calHeight > windowScrollTop) {
+				top = inputOffset.top - calHeight - 4;
+			}
+
+			// Viewport bounds check (horizontal for RTL / LTR)
+			if (isRtl) {
+				left = (inputOffset.left + inputWidth) - calWidth;
+			}
+			if (left < 10) left = 10;
+
+			$calendarPopup.css({
+				top: top + 'px',
+				left: left + 'px'
+			}).fadeIn(120);
+		}
+
+		function closeCalendar() {
+			if ($calendarPopup) {
+				$calendarPopup.fadeOut(100);
+			}
+			$activeDatePickerInput = null;
+		}
+
+		// Bind Datepicker inputs and calendar icon buttons
+		$(document).on('click', '.js-datepicker', function(e) {
+			e.stopPropagation();
+			openCalendarFor($(this));
+		});
+
+		$(document).on('click', '.js-datepicker-toggle', function(e) {
+			e.preventDefault();
+			e.stopPropagation();
+			var $targetInput = $(this).siblings('.js-datepicker');
+			if ($targetInput.length) {
+				openCalendarFor($targetInput);
+			}
+		});
+
+		// Close calendar on click outside or ESC key
+		$(document).on('click', function() {
+			closeCalendar();
+		});
+
+		$(document).on('keydown', function(e) {
+			if (e.key === 'Escape' || e.keyCode === 27) {
+				closeCalendar();
+			}
+		});
+
+		// =========================================================================
+		// 2. Contract Duration Live Calculation
+		// =========================================================================
+
 		function calculateDuration(startStr, endStr) {
 			var start = parseDateStr(startStr);
 			var end   = parseDateStr(endStr);
 
 			if (!start) {
-				return 'Indefinite / Open-ended';
+				return isRtl ? 'غير محدد / عقد مفتوح' : 'Indefinite / Open-ended';
 			}
 			if (!end) {
-				return 'Open-ended / Indefinite contract';
+				return isRtl ? 'عقد مفتوح / غير محدد المدة' : 'Open-ended / Indefinite contract';
 			}
 
 			if (end < start) {
-				return 'Invalid range (End date is before start date)';
+				return isRtl ? 'نطاق غير صحيح (تاريخ النهاية يسبق تاريخ البداية)' : 'Invalid range (End date is before start date)';
 			}
 
 			var diffTime = Math.abs(end - start);
@@ -99,19 +326,29 @@
 
 			var parts = [];
 			if (years > 0) {
-				parts.push(years + (years === 1 ? ' Year' : ' Years'));
+				parts.push(years + (isRtl ? ' سنة' : (years === 1 ? ' Year' : ' Years')));
 			}
 			if (months > 0) {
-				parts.push(months + (months === 1 ? ' Month' : ' Months'));
+				parts.push(months + (isRtl ? ' شهر' : (months === 1 ? ' Month' : ' Months')));
 			}
 			if (days > 0 || parts.length === 0) {
-				parts.push(days + (days === 1 ? ' Day' : ' Days'));
+				parts.push(days + (isRtl ? ' يوم' : (days === 1 ? ' Day' : ' Days')));
 			}
 
 			return parts.join(', ');
 		}
 
-		// 1. Phone Country Code Switcher
+		$('.js-contract-date').on('input change blur', function() {
+			var start = $('#contract_start_date').val();
+			var end   = $('#contract_end_date').val();
+			var duration = calculateDuration(start, end);
+			$('#nds-hr-duration-text').text(duration);
+		});
+
+		// =========================================================================
+		// 3. Phone Country Code Switcher
+		// =========================================================================
+
 		$('#phone_country_code').on('change', function() {
 			var country = $(this).val();
 			var $mobile = $('#mobile');
@@ -119,20 +356,22 @@
 
 			if ('+966' === country) {
 				$mobile.attr('placeholder', '5xxxxxxxx');
-				$hint.text('Saudi mobile format: 9 digits starting with 5 (e.g. 50 123 4567)');
+				$hint.text(isRtl ? 'صيغة الجوال السعودي: 9 أرقام تبدأ بالرقم 5 (مثال: 50 123 4567)' : 'Saudi mobile format: 9 digits starting with 5 (e.g. 50 123 4567)');
 			} else {
 				$mobile.attr('placeholder', '10xxxxxxxx');
-				$hint.text('Egypt mobile format: 10 digits starting with 10, 11, 12, or 15 (e.g. 10 1234 5678)');
+				$hint.text(isRtl ? 'صيغة الموبايل المصري: 10 أرقام تبدأ بـ 10 أو 11 أو 12 أو 15 (مثال: 10 1234 5678)' : 'Egypt mobile format: 10 digits starting with 10, 11, 12, or 15 (e.g. 10 1234 5678)');
 			}
 		});
 
-		// 2. Profile Photo Live Preview
+		// =========================================================================
+		// 4. Profile Photo Live Preview
+		// =========================================================================
+
 		$('#profile_photo').on('change', function(e) {
 			var file = e.target.files && e.target.files[0];
 			if (file) {
-				// Validate client side type & size
 				if (file.size > 5 * 1024 * 1024) {
-					alert('Selected photo exceeds 5MB limit.');
+					alert(isRtl ? 'حجم الصورة المحددة يتجاوز 5 ميغابايت.' : 'Selected photo exceeds 5MB limit.');
 					$(this).val('');
 					return;
 				}
@@ -146,7 +385,6 @@
 			}
 		});
 
-		// 3. Remove photo checkbox clears preview
 		$('#remove_profile_photo').on('change', function() {
 			if ($(this).is(':checked')) {
 				$('#nds-hr-avatar-preview').hide();
@@ -154,15 +392,45 @@
 			}
 		});
 
-		// 4. Live Contract Duration Calculator
-		$('.js-contract-date').on('input change blur', function() {
-			var start = $('#contract_start_date').val();
-			var end   = $('#contract_end_date').val();
-			var duration = calculateDuration(start, end);
-			$('#nds-hr-duration-text').text(duration);
-		});
+		// =========================================================================
+		// 5. Independent NDS HR Account Credential Management
+		// =========================================================================
 
-		// 5. Account Creation Toggle (New Employee)
+		function generateSecurePassword(length) {
+			length = length || 14;
+			var uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+			var lowercase = 'abcdefghijkmnopqrstuvwxyz';
+			var numbers = '23456789';
+			var symbols = '!@#$%^&*()-_=+[]{}';
+			var allChars = uppercase + lowercase + numbers + symbols;
+
+			var password = '';
+			password += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
+			password += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
+			password += numbers.charAt(Math.floor(Math.random() * numbers.length));
+			password += symbols.charAt(Math.floor(Math.random() * symbols.length));
+
+			for (var i = password.length; i < length; i++) {
+				password += allChars.charAt(Math.floor(Math.random() * allChars.length));
+			}
+
+			return password.split('').sort(function() { return 0.5 - Math.random(); }).join('');
+		}
+
+		function updateLiveCredentialsPreview() {
+			var username = $('#account_username').val() || '';
+			var password = $('#account_password').val() || '';
+			var empCode  = $('#employee_id').val() || '';
+
+			if (username && password) {
+				var previewText = 'Employee ID: ' + empCode + '\nUsername: ' + username + '\nTemporary Password: ' + password;
+				$('#nds-hr-live-creds-text').text(previewText);
+				$('#nds-hr-live-credentials-preview').slideDown(150);
+			} else {
+				$('#nds-hr-live-credentials-preview').slideUp(150);
+			}
+		}
+
 		$('.js-toggle-account-creation').on('change', function() {
 			if ($(this).is(':checked')) {
 				$('#nds-hr-account-credential-fields').slideDown(150);
@@ -171,7 +439,6 @@
 			}
 		});
 
-		// 6. Auto-suggest username from corporate email
 		$('#email').on('input blur', function() {
 			var emailVal = $(this).val();
 			var $usernameField = $('#account_username');
@@ -183,7 +450,6 @@
 			updateLiveCredentialsPreview();
 		});
 
-		// 7. Standalone Generate Password Button
 		$('.js-generate-password-btn').on('click', function(e) {
 			e.preventDefault();
 			var generated = generateSecurePassword(14);
@@ -192,7 +458,6 @@
 			updateLiveCredentialsPreview();
 		});
 
-		// 8. Show/Hide Password Toggle
 		$('.js-toggle-pw-visibility').on('click', function(e) {
 			e.preventDefault();
 			var $pw = $('#account_password');
@@ -209,22 +474,20 @@
 
 		$('#account_username, #employee_id').on('input', updateLiveCredentialsPreview);
 
-		// 9. Copy Staged Credentials Button
 		$('.js-copy-staged-creds-btn').on('click', function(e) {
 			e.preventDefault();
 			var textToCopy = $('#nds-hr-live-creds-text').text();
 			if (navigator.clipboard && textToCopy) {
 				navigator.clipboard.writeText(textToCopy).then(function() {
 					var $btn = $('.js-copy-staged-creds-btn');
-					$btn.text('Copied to Clipboard!');
+					$btn.text(isRtl ? 'تم النسخ للحافظة!' : 'Copied to Clipboard!');
 					setTimeout(function() {
-						$btn.html('<span class="dashicons dashicons-clipboard"></span> Copy Credentials');
+						$btn.html('<span class="dashicons dashicons-clipboard"></span> ' + (isRtl ? 'نسخ بيانات الدخول' : 'Copy Credentials'));
 					}, 2500);
 				});
 			}
 		});
 
-		// 10. Copy New Created Credentials from List Notice
 		$('.js-copy-new-credentials-btn').on('click', function(e) {
 			e.preventDefault();
 			var empId = $('#nds-hr-cred-empid').text().trim();
@@ -239,13 +502,14 @@
 			if (navigator.clipboard) {
 				navigator.clipboard.writeText(bundle).then(function() {
 					var $btnText = $('.js-copy-btn-text');
-					$btnText.text('Credentials Copied!');
+					$btnText.text(isRtl ? 'تم نسخ بيانات الدخول!' : 'Credentials Copied!');
 					setTimeout(function() {
-						$btnText.text('Copy Credentials');
+						$btnText.text(isRtl ? 'نسخ بيانات الدخول' : 'Copy Credentials');
 					}, 3000);
 				});
 			}
 		});
+
 	});
 
 })(jQuery);

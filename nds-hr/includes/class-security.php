@@ -490,10 +490,16 @@ class NDS_HR_Security {
 		$raw_contract_end = isset( $raw_input['contract_end_date'] ) ? wp_unslash( $raw_input['contract_end_date'] ) : '';
 		$clean['contract_end_date'] = self::parse_date_to_sql( $raw_contract_end );
 
-		$clean['basic_salary'] = isset( $raw_input['basic_salary'] ) ? floatval( $raw_input['basic_salary'] ) : 0.00;
-		if ( $clean['basic_salary'] < 0 ) {
-			$clean['basic_salary'] = 0.00;
+		// Optional Basic Salary and ISO Currency Code (EGP / SAR)
+		$raw_salary = isset( $raw_input['basic_salary'] ) ? trim( (string) wp_unslash( $raw_input['basic_salary'] ) ) : '';
+		if ( '' === $raw_salary || ! is_numeric( str_replace( ',', '', $raw_salary ) ) ) {
+			$clean['basic_salary'] = null;
+		} else {
+			$clean['basic_salary'] = max( 0.00, floatval( str_replace( ',', '', $raw_salary ) ) );
 		}
+
+		$salary_currency = isset( $raw_input['salary_currency'] ) ? strtoupper( sanitize_text_field( wp_unslash( $raw_input['salary_currency'] ) ) ) : 'EGP';
+		$clean['salary_currency'] = in_array( $salary_currency, array( 'EGP', 'SAR' ), true ) ? $salary_currency : 'EGP';
 
 		$clean['profile_photo_url'] = isset( $raw_input['profile_photo_url'] ) ? esc_url_raw( wp_unslash( $raw_input['profile_photo_url'] ) ) : '';
 		$clean['address']           = isset( $raw_input['address'] ) ? sanitize_textarea_field( wp_unslash( $raw_input['address'] ) ) : '';
