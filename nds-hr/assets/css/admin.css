@@ -16,7 +16,7 @@
 	--nds-hr-slate-300: #CBD5E1;
 	--nds-hr-slate-200: #E2E8F0;
 	--nds-hr-slate-100: #F1F5F9;
-	--nds-hr-background: #F8FAFC;
+	--nds-hr-background: #F1F5F9;
 	--nds-hr-white: #FFFFFF;
 	--nds-hr-success: #16A34A;
 	--nds-hr-success-bg: #DCFCE7;
@@ -133,10 +133,12 @@
 .nds-hr-btn {
 	display: inline-flex;
 	align-items: center;
+	justify-content: center;
 	gap: 6px;
 	font-size: 13px;
 	font-weight: 600;
-	padding: 8px 16px;
+	padding: 7px 14px;
+	width: auto;
 	border-radius: var(--nds-hr-radius);
 	text-decoration: none;
 	cursor: pointer;
@@ -498,35 +500,92 @@
 .nds-hr-alert-danger  { background: var(--nds-hr-danger-bg);  color: var(--nds-hr-danger);  border: 1px solid #FECACA; }
 .nds-hr-alert-info    { background: var(--nds-hr-info-bg);    color: var(--nds-hr-info);    border: 1px solid #BAE6FD; }
 
-/* Filter Toolbar */
-.nds-hr-filter-toolbar {
-	padding: 14px 18px;
+/* Global Navigation Progress Bar */
+#nds-hr-global-progress {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 3px;
+	z-index: 999999;
+	background: rgba(13, 148, 136, 0.2);
+	pointer-events: none;
+	display: none;
 }
 
-.nds-hr-filter-form {
+#nds-hr-global-progress.is-loading {
+	display: block;
+}
+
+#nds-hr-global-progress .nds-hr-progress-inner {
+	height: 100%;
+	width: 0%;
+	background: var(--nds-hr-primary);
+	box-shadow: 0 0 8px rgba(13, 148, 136, 0.6);
+	transition: width 200ms cubic-bezier(0.4, 0, 0.2, 1), opacity 200ms ease;
+}
+
+/* Filter Toolbar */
+.nds-hr-filter-toolbar {
+	padding: 12px 16px;
+}
+
+.nds-hr-toolbar-form {
 	display: flex;
 	align-items: center;
-	gap: 12px;
+	gap: 10px;
+	width: 100%;
 	flex-wrap: wrap;
 }
 
-.nds-hr-search-group {
+.nds-hr-search-box {
 	position: relative;
 	flex: 1;
-	min-width: 220px;
+	min-width: 200px;
 }
 
-.nds-hr-search-icon {
+.nds-hr-search-box .dashicons {
 	position: absolute;
 	left: 10px;
 	top: 50%;
 	transform: translateY(-50%);
 	color: var(--nds-hr-slate-400);
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	pointer-events: none;
 }
 
-.nds-hr-search-input {
-	padding-left: 36px !important;
+.nds-hr-search-box .nds-hr-input {
+	padding-left: 34px !important;
 	width: 100%;
+}
+
+.nds-hr-filter-dept {
+	flex: 0 0 auto;
+	min-width: 180px;
+}
+
+.nds-hr-filter-status {
+	flex: 0 0 auto;
+	min-width: 140px;
+}
+
+.nds-hr-btn-filter {
+	padding: 7px 14px;
+	font-size: 12px;
+}
+
+.nds-hr-btn-reset {
+	color: var(--nds-hr-slate-600);
+	text-decoration: none;
+	font-size: 12px;
+	padding: 7px 10px;
+}
+
+.nds-hr-btn-reset:hover {
+	color: var(--nds-hr-dark);
+	text-decoration: underline;
 }
 
 .nds-hr-input,

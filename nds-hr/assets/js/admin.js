@@ -510,6 +510,64 @@
 			}
 		});
 
+		// =========================================================================
+		// Global Page Navigation Progress Bar
+		// =========================================================================
+		function initGlobalProgressBar() {
+			if (!$('#nds-hr-global-progress').length) {
+				$('body').prepend(
+					'<div id="nds-hr-global-progress" role="progressbar" aria-label="Loading page..." aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">' +
+						'<div class="nds-hr-progress-inner"></div>' +
+					'</div>'
+				);
+			}
+
+			var $bar = $('#nds-hr-global-progress');
+			var $inner = $bar.find('.nds-hr-progress-inner');
+
+			function startProgress() {
+				$bar.addClass('is-loading');
+				$inner.css({ width: '30%', opacity: 1 });
+				setTimeout(function() {
+					$inner.css({ width: '75%' });
+				}, 100);
+			}
+
+			function completeProgress() {
+				$inner.css({ width: '100%' });
+				setTimeout(function() {
+					$inner.css({ opacity: 0 });
+					setTimeout(function() {
+						$bar.removeClass('is-loading');
+						$inner.css({ width: '0%' });
+					}, 200);
+				}, 150);
+			}
+
+			// Intercept standard navigation links (excluding hash links, target=_blank, modals)
+			$(document).on('click', 'a', function(e) {
+				var href = $(this).attr('href');
+				var target = $(this).attr('target');
+				var isModal = $(this).hasClass('js-open-modal') || $(this).data('toggle') === 'modal';
+
+				if (!href || href.startsWith('#') || href.startsWith('javascript:') || target === '_blank' || isModal) {
+					return;
+				}
+
+				// Only start progress for internal navigation
+				if (href.indexOf(window.location.host) !== -1 || href.startsWith('/') || !href.startsWith('http')) {
+					startProgress();
+				}
+			});
+
+			// Complete progress when DOM is fully loaded or page shows
+			$(window).on('pageshow', function() {
+				completeProgress();
+			});
+		}
+
+		initGlobalProgressBar();
+
 	});
 
 })(jQuery);

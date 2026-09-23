@@ -1,1 +1,20 @@
 @import "tailwindcss";
+
+body {
+  background-color: #F1F5F9;
+  color: #1E293B;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+@keyframes ndsProgressBarGlow {
+  0% { opacity: 0.8; }
+  50% { opacity: 1; }
+  100% { opacity: 0.8; }
+}
+
+.nds-progress-bar {
+  transition: width 200ms cubic-bezier(0.4, 0, 0.2, 1), opacity 200ms ease;
+  animation: ndsProgressBarGlow 1.5s infinite;
+}

@@ -33,6 +33,28 @@ export default function App() {
   const [currentPortalEmployee, setCurrentPortalEmployee] = useState<Employee>(initialEmployees[0]);
   const [isArabic, setIsArabic] = useState<boolean>(false);
   const [activeSessionNotice, setActiveSessionNotice] = useState<string | null>(null);
+  const [isNavigating, setIsNavigating] = useState<boolean>(false);
+  const [navProgress, setNavProgress] = useState<number>(0);
+
+  // Centralized Navigation Handler with Immediate Loading Feedback
+  const handleNavigateView = (targetMode: 'admin' | 'roles' | 'portal' | 'login' | 'explorer') => {
+    if (targetMode === viewMode) return;
+    setIsNavigating(true);
+    setNavProgress(35);
+    
+    // Smooth transition
+    requestAnimationFrame(() => {
+      setNavProgress(75);
+      setViewMode(targetMode);
+      setTimeout(() => {
+        setNavProgress(100);
+        setTimeout(() => {
+          setIsNavigating(false);
+          setNavProgress(0);
+        }, 200);
+      }, 80);
+    });
+  };
 
   // Add Employee Handler
   const handleAddEmployee = (empData: Partial<Employee>, accountAction: string) => {
@@ -189,7 +211,24 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-800 flex flex-col selection:bg-teal-500 selection:text-white">
+    <div className="min-h-screen bg-[#F1F5F9] text-slate-800 flex flex-col selection:bg-teal-500 selection:text-white relative">
+      {/* Centralized Slim Top Loading Progress Bar */}
+      {isNavigating && (
+        <div
+          role="progressbar"
+          aria-label={isArabic ? 'جاري تحميل الصفحة...' : 'Loading page...'}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={navProgress}
+          className="fixed top-0 left-0 right-0 h-[3px] z-50 bg-teal-500/30 overflow-hidden shadow-xs"
+        >
+          <div
+            className="h-full bg-teal-500 nds-progress-bar shadow-[0_0_8px_rgba(13,148,136,0.6)]"
+            style={{ width: `${navProgress}%` }}
+          />
+        </div>
+      )}
+
       {/* Top Application Header / Switcher Bar */}
       <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
@@ -214,7 +253,7 @@ export default function App() {
           {/* Navigation View Modes */}
           <div className="flex items-center gap-1.5 bg-slate-800 p-1 rounded-xl border border-slate-700/80">
             <button
-              onClick={() => setViewMode('admin')}
+              onClick={() => handleNavigateView('admin')}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                 viewMode === 'admin'
                   ? 'bg-teal-600 text-white shadow-xs'
@@ -226,7 +265,7 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setViewMode('roles')}
+              onClick={() => handleNavigateView('roles')}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                 viewMode === 'roles'
                   ? 'bg-teal-600 text-white shadow-xs'
@@ -238,7 +277,7 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setViewMode('portal')}
+              onClick={() => handleNavigateView('portal')}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                 viewMode === 'portal'
                   ? 'bg-teal-600 text-white shadow-xs'
@@ -250,7 +289,7 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setViewMode('login')}
+              onClick={() => handleNavigateView('login')}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                 viewMode === 'login'
                   ? 'bg-teal-600 text-white shadow-xs'
@@ -262,7 +301,7 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setViewMode('explorer')}
+              onClick={() => handleNavigateView('explorer')}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                 viewMode === 'explorer'
                   ? 'bg-teal-600 text-white shadow-xs'

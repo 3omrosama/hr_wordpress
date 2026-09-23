@@ -27,7 +27,7 @@ $error   = isset( $_GET['error'] ) ? sanitize_text_field( wp_unslash( $_GET['err
 			</div>
 			<div class="nds-hr-header-actions">
 				<?php if ( NDS_HR_Permissions::can_manage_employees() ) : ?>
-					<a href="<?php echo esc_url( admin_url( 'admin.php?page=nds-hr-employees&action=add' ) ); ?>" class="nds-hr-btn nds-hr-btn-primary">
+					<a href="<?php echo esc_url( NDS_HR_Router::url( 'admin', array( 'tab' => 'employees', 'action' => 'add' ) ) ); ?>" class="nds-hr-btn nds-hr-btn-primary">
 						<span class="dashicons dashicons-plus"></span>
 						<?php esc_html_e( 'Add Employee', 'nds-hr' ); ?>
 					</a>
@@ -122,7 +122,7 @@ $error   = isset( $_GET['error'] ) ? sanitize_text_field( wp_unslash( $_GET['err
 
 	<!-- Filter & Search Toolbar -->
 	<div class="nds-hr-card nds-hr-filter-toolbar">
-		<form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" class="nds-hr-toolbar-form">
+		<form method="get" action="<?php echo esc_url( NDS_HR_Router::url( 'admin', array( 'tab' => 'employees' ) ) ); ?>" class="nds-hr-toolbar-form">
 			<input type="hidden" name="page" value="nds-hr-employees">
 
 			<!-- Search input -->
@@ -138,7 +138,7 @@ $error   = isset( $_GET['error'] ) ? sanitize_text_field( wp_unslash( $_GET['err
 			</div>
 
 			<!-- Department filter -->
-			<div class="nds-hr-filter-item">
+			<div class="nds-hr-filter-item nds-hr-filter-dept">
 				<select name="department_id" class="nds-hr-select">
 					<option value="0"><?php esc_html_e( 'All Departments', 'nds-hr' ); ?></option>
 					<?php foreach ( $departments as $dept ) : ?>
@@ -150,7 +150,7 @@ $error   = isset( $_GET['error'] ) ? sanitize_text_field( wp_unslash( $_GET['err
 			</div>
 
 			<!-- Status filter -->
-			<div class="nds-hr-filter-item">
+			<div class="nds-hr-filter-item nds-hr-filter-status">
 				<select name="status" class="nds-hr-select">
 					<option value=""><?php esc_html_e( 'All Statuses', 'nds-hr' ); ?></option>
 					<option value="active" <?php selected( $status_filter, 'active' ); ?>><?php esc_html_e( 'Active', 'nds-hr' ); ?></option>
@@ -160,12 +160,12 @@ $error   = isset( $_GET['error'] ) ? sanitize_text_field( wp_unslash( $_GET['err
 				</select>
 			</div>
 
-			<button type="submit" class="nds-hr-btn nds-hr-btn-outline">
+			<button type="submit" class="nds-hr-btn nds-hr-btn-outline nds-hr-btn-filter">
 				<?php esc_html_e( 'Filter', 'nds-hr' ); ?>
 			</button>
 
 			<?php if ( ! empty( $search ) || ! empty( $department_id ) || ! empty( $status_filter ) ) : ?>
-				<a href="<?php echo esc_url( admin_url( 'admin.php?page=nds-hr-employees' ) ); ?>" class="nds-hr-btn nds-hr-btn-link">
+				<a href="<?php echo esc_url( NDS_HR_Router::url( 'admin', array( 'tab' => 'employees' ) ) ); ?>" class="nds-hr-btn nds-hr-btn-link nds-hr-btn-reset">
 					<?php esc_html_e( 'Reset Filters', 'nds-hr' ); ?>
 				</a>
 			<?php endif; ?>
@@ -180,7 +180,7 @@ $error   = isset( $_GET['error'] ) ? sanitize_text_field( wp_unslash( $_GET['err
 				<h3><?php esc_html_e( 'No employees found', 'nds-hr' ); ?></h3>
 				<p class="nds-hr-muted-text"><?php esc_html_e( 'Try refining your search terms or add a new employee profile to start.', 'nds-hr' ); ?></p>
 				<?php if ( NDS_HR_Permissions::can_manage_employees() ) : ?>
-					<a href="<?php echo esc_url( admin_url( 'admin.php?page=nds-hr-employees&action=add' ) ); ?>" class="nds-hr-btn nds-hr-btn-primary">
+					<a href="<?php echo esc_url( NDS_HR_Router::url( 'admin', array( 'tab' => 'employees', 'action' => 'add' ) ) ); ?>" class="nds-hr-btn nds-hr-btn-primary">
 						<span class="dashicons dashicons-plus"></span>
 						<?php esc_html_e( 'Add First Employee', 'nds-hr' ); ?>
 					</a>

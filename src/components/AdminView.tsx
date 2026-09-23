@@ -535,10 +535,10 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
         {/* Action Buttons & Tabs */}
         <div className="flex items-center flex-wrap gap-2">
-          <div className="bg-slate-100 p-1 rounded-lg flex gap-1 border border-slate-200">
+          <div className="bg-slate-100 p-1 rounded-lg inline-flex items-center gap-1 border border-slate-200">
             <button
               onClick={() => setActiveTab('dashboard')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all whitespace-nowrap ${
                 activeTab === 'dashboard' ? 'bg-white text-teal-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -546,7 +546,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
             </button>
             <button
               onClick={() => setActiveTab('employees')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all whitespace-nowrap ${
                 activeTab === 'employees' ? 'bg-white text-teal-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -554,7 +554,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
             </button>
             <button
               onClick={() => setActiveTab('audit')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all whitespace-nowrap ${
                 activeTab === 'audit' ? 'bg-white text-teal-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -562,7 +562,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
             </button>
             <button
               onClick={() => setActiveTab('settings')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all whitespace-nowrap ${
                 activeTab === 'settings' ? 'bg-white text-teal-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -570,7 +570,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
             </button>
             <button
               onClick={() => setActiveTab('blueprint')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all whitespace-nowrap ${
                 activeTab === 'blueprint' ? 'bg-white text-teal-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -580,10 +580,10 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors whitespace-nowrap shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>{isArabic ? 'إضافة موظف جديد' : 'Add Employee'}</span>
+            <span>{isArabic ? 'إضافة موظف' : 'Add Employee'}</span>
           </button>
         </div>
       </div>
@@ -846,42 +846,75 @@ export const AdminView: React.FC<AdminViewProps> = ({
       {/* TAB 2: EMPLOYEE DIRECTORY */}
       {activeTab === 'employees' && (
         <div className="space-y-4">
-          {/* Filters Bar */}
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
-            <div className="relative w-full md:w-72">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={isArabic ? 'البحث بالاسم أو البريد أو الرقم...' : 'Search by name, email, ID...'}
-                className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-teal-500"
-              />
-            </div>
+          {/* Horizontal Filters Toolbar */}
+          <div className="bg-white border border-slate-200 rounded-xl p-3 sm:p-4 shadow-sm">
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* 1. Search employees (flexible / larger width) */}
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={isArabic ? 'البحث بالاسم أو البريد أو الرقم الوظيفي...' : 'Search by name, ID, email...'}
+                  className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-teal-500 focus:bg-white transition-colors"
+                />
+              </div>
 
-            <div className="flex items-center gap-2 w-full md:w-auto">
-              <select
-                value={deptFilter}
-                onChange={(e) => setDeptFilter(Number(e.target.value))}
-                className="text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700"
-              >
-                <option value={0}>{isArabic ? 'كافة الأقسام' : 'All Departments'}</option>
-                {departments.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
+              {/* 2. Department filter (medium width) */}
+              <div className="w-full sm:w-48">
+                <select
+                  value={deptFilter}
+                  onChange={(e) => setDeptFilter(Number(e.target.value))}
+                  className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 focus:outline-none focus:border-teal-500 focus:bg-white transition-colors"
+                >
+                  <option value={0}>{isArabic ? 'كافة الأقسام' : 'All Departments'}</option>
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700"
+              {/* 3. Status filter (smaller width) */}
+              <div className="w-full sm:w-36">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 focus:outline-none focus:border-teal-500 focus:bg-white transition-colors"
+                >
+                  <option value="">{isArabic ? 'كافة الحالات' : 'All Statuses'}</option>
+                  <option value="active">{isArabic ? 'نشط (Active)' : 'Active'}</option>
+                  <option value="inactive">{isArabic ? 'غير نشط (Inactive)' : 'Inactive'}</option>
+                </select>
+              </div>
+
+              {/* 4. Reset Filters if active */}
+              {(searchQuery || deptFilter !== 0 || statusFilter !== '') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setDeptFilter(0);
+                    setStatusFilter('');
+                  }}
+                  className="px-2.5 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors whitespace-nowrap"
+                  title={isArabic ? 'إعادة ضبط التصفية' : 'Reset Filters'}
+                >
+                  {isArabic ? 'إلغاء التصفية' : 'Reset'}
+                </button>
+              )}
+
+              {/* 5. Add Employee Action Button */}
+              <button
+                type="button"
+                onClick={() => setIsAddModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors whitespace-nowrap ml-auto"
               >
-                <option value="">{isArabic ? 'كافة الحالات' : 'All Statuses'}</option>
-                <option value="active">{isArabic ? 'نشط (Active)' : 'Active'}</option>
-                <option value="inactive">{isArabic ? 'غير نشط (Inactive)' : 'Inactive'}</option>
-              </select>
+                <Plus className="w-3.5 h-3.5" />
+                <span>{isArabic ? 'إضافة موظف' : 'Add Employee'}</span>
+              </button>
             </div>
           </div>
 

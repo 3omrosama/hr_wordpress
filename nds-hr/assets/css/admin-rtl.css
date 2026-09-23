@@ -21,14 +21,16 @@ body.rtl .nds-hr-wrap,
 	justify-content: flex-start;
 }
 
-[dir="rtl"] .nds-hr-search-icon {
+[dir="rtl"] .nds-hr-search-icon,
+[dir="rtl"] .nds-hr-search-box .dashicons {
 	left: auto;
 	right: 10px;
 }
 
-[dir="rtl"] .nds-hr-search-input {
+[dir="rtl"] .nds-hr-search-input,
+[dir="rtl"] .nds-hr-search-box .nds-hr-input {
 	padding-left: 12px !important;
-	padding-right: 36px !important;
+	padding-right: 34px !important;
 }
 
 [dir="rtl"] .nds-hr-page-link &laquo; {
