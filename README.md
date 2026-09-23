@@ -20,18 +20,14 @@ NDS HR is a modern, standalone, production-ready Human Resources Management Syst
 
 ### How to Install the Official Plugin ZIP
 
-1. Go to the **[Actions tab](../../actions)** on GitHub.
-2. Select the latest successful workflow run of **"Build & Package WordPress Plugin"**.
-3. Under **Artifacts**, download the official production package:
-   ```
-   nds-hr-v2.0.0.zip
-   ```
-   *(Or download the release asset from the [Releases](../../releases) page when published).*
-4. In your WordPress administration panel:
+1. **Download the Production Plugin:**
+   - **From GitHub Releases (Recommended):** Download `nds-hr-v2.0.0.zip` directly from the [Releases](../../releases) section.
+   - **From GitHub Actions Artifacts:** Go to the [Actions tab](../../actions) → latest run of **"Build & Package WordPress Plugin"** → download the artifact. *(Note: GitHub Actions wraps downloaded artifacts in an outer zip file; simply extract the downloaded archive to access the clean `nds-hr-v2.0.0.zip` plugin inside).*
+2. In your WordPress administration panel:
    - Navigate to **Plugins → Add New → Upload Plugin**.
-   - Choose the downloaded `nds-hr-vX.Y.Z.zip` file.
+   - Choose the `nds-hr-v2.0.0.zip` file (the archive containing `nds-hr/nds-hr.php` at its root).
    - Click **Install Now**, then click **Activate Plugin**.
-5. Once activated, NDS HR initializes the custom database schema, registers custom roles, and makes canonical routes available at:
+3. Once activated, NDS HR initializes the custom database schema, registers custom roles, and makes canonical routes available at:
    - **HR Portal:** `your-domain.com/hr/`
    - **Employee Self-Service:** `your-domain.com/employee/`
    - **Unified Login:** `your-domain.com/hr/login/` (or `your-domain.com/login/`)
