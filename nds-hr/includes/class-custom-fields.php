@@ -434,6 +434,45 @@ class NDS_HR_Custom_Fields {
 	   ========================================================================= */
 
 	/**
+	 * Generate a unique internal field key for an entity.
+	 *
+	 * @param string $entity Target entity (default: 'employee').
+	 * @param string $prefix Optional prefix (default: 'custom_field').
+	 * @return string Unique internal field key (e.g. 'custom_field_1' or 'custom_field_17').
+	 */
+	public static function generate_unique_field_key( $entity = 'employee', $prefix = 'custom_field' ) {
+		global $wpdb;
+		$table = NDS_HR_Database::custom_fields_table();
+
+		// Clean prefix to alphanumeric + underscore
+		$prefix = preg_replace( '/[^a-z0-9_]/', '', strtolower( $prefix ) );
+		if ( empty( $prefix ) ) {
+			$prefix = 'custom_field';
+		}
+
+		// Query current max ID or calculate next incremental counter
+		$max_id = (int) $wpdb->get_var( "SELECT MAX(id) FROM {$table}" );
+		$counter = $max_id + 1;
+
+		do {
+			$candidate = $prefix . '_' . $counter;
+			$exists    = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT id FROM {$table} WHERE entity = %s AND field_key = %s LIMIT 1",
+					$entity,
+					$candidate
+				)
+			);
+			if ( ! $exists ) {
+				return $candidate;
+			}
+			$counter++;
+		} while ( $counter < $max_id + 10000 );
+
+		return $prefix . '_' . wp_generate_password( 8, false, false );
+	}
+
+	/**
 	 * Create a new custom field definition.
 	 *
 	 * @param array $data Field definition data.
@@ -455,8 +494,12 @@ class NDS_HR_Custom_Fields {
 			);
 		}
 
-		// 2. Validate Field Key
+		// 2. Validate / Generate Field Key
 		$field_key = isset( $data['field_key'] ) ? strtolower( trim( $data['field_key'] ) ) : '';
+		if ( empty( $field_key ) ) {
+			$field_key = self::generate_unique_field_key( $entity, 'custom_field' );
+		}
+
 		if ( ! self::is_valid_field_key( $field_key ) ) {
 			return new WP_Error(
 				'invalid_field_key',

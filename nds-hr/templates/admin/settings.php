@@ -300,9 +300,8 @@ $nav_items = array(
 							<table class="nds-hr-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
 								<thead>
 									<tr style="background: #F8FAFC; border-bottom: 1px solid #E2E8F0; color: #475569; font-weight: 600;">
-										<th style="padding: 12px 16px;"><?php esc_html_e( 'Field Label', 'nds-hr' ); ?></th>
-										<th style="padding: 12px 16px;"><?php esc_html_e( 'Field Key', 'nds-hr' ); ?></th>
-										<th style="padding: 12px 16px;"><?php esc_html_e( 'Field Type', 'nds-hr' ); ?></th>
+										<th style="padding: 12px 16px;"><?php esc_html_e( 'Field', 'nds-hr' ); ?></th>
+										<th style="padding: 12px 16px;"><?php esc_html_e( 'Type', 'nds-hr' ); ?></th>
 										<th style="padding: 12px 16px; text-align: center;"><?php esc_html_e( 'Required', 'nds-hr' ); ?></th>
 										<th style="padding: 12px 16px; text-align: center;"><?php esc_html_e( 'Status', 'nds-hr' ); ?></th>
 										<th style="padding: 12px 16px; text-align: center;"><?php esc_html_e( 'Display Order', 'nds-hr' ); ?></th>
@@ -325,11 +324,6 @@ $nav_items = array(
 														<?php echo esc_html( $cf->description ); ?>
 													</div>
 												<?php endif; ?>
-											</td>
-											<td style="padding: 12px 16px;">
-												<code style="background: #F1F5F9; color: #0F172A; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-family: monospace;">
-													<?php echo esc_html( $cf->field_key ); ?>
-												</code>
 											</td>
 											<td style="padding: 12px 16px; color: #334155;">
 												<span style="display: inline-flex; align-items: center; gap: 4px;">
@@ -390,7 +384,7 @@ $nav_items = array(
 														<!-- Delete Button -->
 														<button type="button" 
 														        class="nds-hr-action-btn" 
-														        onclick='openDeleteFieldModal(<?php echo esc_attr( (string) $cf->id ); ?>, "<?php echo esc_js( $cf->field_label ); ?>", "<?php echo esc_js( $cf->field_key ); ?>")'
+														        onclick='openDeleteFieldModal(<?php echo esc_attr( (string) $cf->id ); ?>, "<?php echo esc_js( $cf->field_label ); ?>")'
 														        title="<?php esc_attr_e( 'Delete Field', 'nds-hr' ); ?>"
 														        style="background: transparent; border: 1px solid #FCA5A5; color: #DC2626; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; cursor: pointer;">
 															<?php esc_html_e( 'Delete', 'nds-hr' ); ?>
@@ -424,35 +418,17 @@ $nav_items = array(
 								<input type="hidden" id="cf_original_type" value="">
 
 								<div style="display: flex; flex-direction: column; gap: 16px;">
-									<!-- Field Label -->
+									<!-- Field Name / Label -->
 									<div class="nds-hr-form-group">
 										<label for="cf_label" style="display: block; font-size: 13px; font-weight: 600; color: #1E293B; margin-bottom: 6px;">
-											<?php esc_html_e( 'Field Label', 'nds-hr' ); ?> <span style="color: #DC2626;">*</span>
+											<?php esc_html_e( 'Field Name', 'nds-hr' ); ?> <span style="color: #DC2626;">*</span>
 										</label>
 										<input type="text" 
 										       id="cf_label" 
 										       name="field_label" 
 										       required 
-										       placeholder="<?php esc_attr_e( 'e.g. Fingerprint Code, Work Shift', 'nds-hr' ); ?>"
-										       oninput="onFieldLabelInput(this.value)"
+										       placeholder="<?php esc_attr_e( 'e.g. Fingerprint Device ID, Work Shift', 'nds-hr' ); ?>"
 										       style="width: 100%; padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 13px; box-sizing: border-box;">
-									</div>
-
-									<!-- Field Key -->
-									<div class="nds-hr-form-group">
-										<label for="cf_key" style="display: block; font-size: 13px; font-weight: 600; color: #1E293B; margin-bottom: 6px;">
-											<?php esc_html_e( 'Field Key (Programmatic ID)', 'nds-hr' ); ?> <span style="color: #DC2626;">*</span>
-										</label>
-										<input type="text" 
-										       id="cf_key" 
-										       name="field_key" 
-										       required 
-										       pattern="^[a-z0-9][a-z0-9_]{1,99}$"
-										       placeholder="<?php esc_attr_e( 'e.g. fingerprint_code', 'nds-hr' ); ?>"
-										       style="width: 100%; padding: 9px 12px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 13px; font-family: monospace; box-sizing: border-box;">
-										<p style="margin: 4px 0 0 0; font-size: 11px; color: #64748B;">
-											<?php esc_html_e( 'Must be lowercase alphanumeric with underscores (e.g. work_shift).', 'nds-hr' ); ?>
-										</p>
 									</div>
 
 									<!-- Field Type -->
@@ -567,7 +543,7 @@ $nav_items = array(
 									</h3>
 									<p style="margin: 0; color: #64748B; font-size: 13px; line-height: 1.5;">
 										<?php esc_html_e( 'Are you sure you want to permanently delete custom field', 'nds-hr' ); ?> 
-										<strong id="delete-cf-name" style="color: #0F172A;"></strong> (<code id="delete-cf-key" style="font-size: 11px;"></code>)?
+										<strong id="delete-cf-name" style="color: #0F172A;"></strong>?
 									</p>
 								</div>
 							</div>
@@ -599,7 +575,6 @@ $nav_items = array(
 
 					<script>
 					var optionTypes = ['select', 'multiselect', 'checkbox', 'radio'];
-					var isManualKeyEdit = false;
 
 					function openCustomFieldModal(mode, fieldData) {
 						var modal = document.getElementById('nds-hr-cf-modal');
@@ -607,7 +582,6 @@ $nav_items = array(
 						var actionInput = document.getElementById('cf_action');
 						var idInput = document.getElementById('cf_id');
 						var labelInput = document.getElementById('cf_label');
-						var keyInput = document.getElementById('cf_key');
 						var typeInput = document.getElementById('cf_type');
 						var descInput = document.getElementById('cf_description');
 						var reqInput = document.getElementById('cf_is_required');
@@ -624,14 +598,12 @@ $nav_items = array(
 							actionInput.value = 'update_custom_field';
 							idInput.value = fieldData.id;
 							labelInput.value = fieldData.field_label || '';
-							keyInput.value = fieldData.field_key || '';
 							typeInput.value = fieldData.field_type || 'text';
 							descInput.value = fieldData.description || '';
 							reqInput.checked = Boolean(fieldData.is_required);
 							activeInput.checked = Boolean(fieldData.is_active);
 							orderInput.value = fieldData.sort_order || 10;
 							originalTypeInput.value = fieldData.field_type || 'text';
-							isManualKeyEdit = true;
 
 							// Render options if select/multiselect/checkbox/radio
 							if (fieldData.settings && fieldData.settings.options && Array.isArray(fieldData.settings.options)) {
@@ -644,14 +616,12 @@ $nav_items = array(
 							actionInput.value = 'create_custom_field';
 							idInput.value = '';
 							labelInput.value = '';
-							keyInput.value = '';
 							typeInput.value = 'text';
 							descInput.value = '';
 							reqInput.checked = false;
 							activeInput.checked = true;
 							orderInput.value = 10;
 							originalTypeInput.value = '';
-							isManualKeyEdit = false;
 						}
 
 						onFieldTypeChange(typeInput.value);
@@ -661,20 +631,6 @@ $nav_items = array(
 					function closeCustomFieldModal() {
 						document.getElementById('nds-hr-cf-modal').style.display = 'none';
 					}
-
-					function onFieldLabelInput(val) {
-						if (!isManualKeyEdit) {
-							var slug = val.toLowerCase()
-								.replace(/[^a-z0-9\s]/g, '')
-								.replace(/\s+/g, '_')
-								.substring(0, 50);
-							document.getElementById('cf_key').value = slug;
-						}
-					}
-
-					document.getElementById('cf_key').addEventListener('input', function() {
-						isManualKeyEdit = true;
-					});
 
 					function onFieldTypeChange(newType) {
 						var optionsGroup = document.getElementById('cf-options-group');
@@ -719,10 +675,9 @@ $nav_items = array(
 						return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 					}
 
-					function openDeleteFieldModal(id, label, key) {
+					function openDeleteFieldModal(id, label) {
 						document.getElementById('delete-cf-id').value = id;
 						document.getElementById('delete-cf-name').textContent = label;
-						document.getElementById('delete-cf-key').textContent = key;
 						document.getElementById('nds-hr-cf-delete-modal').style.display = 'flex';
 					}
 

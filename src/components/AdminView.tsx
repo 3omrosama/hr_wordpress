@@ -377,16 +377,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
   };
 
   const handleCfLabelChange = (val: string) => {
-    if (!cfFormData.isManualKey) {
-      const slug = val
-        .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, '')
-        .replace(/\s+/g, '_')
-        .substring(0, 50);
-      setCfFormData({ ...cfFormData, field_label: val, field_key: slug });
-    } else {
-      setCfFormData({ ...cfFormData, field_label: val });
-    }
+    setCfFormData({ ...cfFormData, field_label: val });
   };
 
   const handleAddOptionRow = () => {
@@ -415,8 +406,8 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
   const handleSaveCustomField = (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanKey = cfFormData.field_key.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
-    if (!cleanKey) return;
+    const labelTrimmed = cfFormData.field_label.trim();
+    if (!labelTrimmed) return;
 
     const isOptionType = ['select', 'multiselect', 'checkbox', 'radio'].includes(cfFormData.field_type);
     const validOptions = isOptionType
@@ -429,17 +420,20 @@ export const AdminView: React.FC<AdminViewProps> = ({
     const settingsObj = validOptions ? { options: validOptions } : null;
 
     if (cfModalMode === 'create') {
-      // Check duplicate key
-      if (customFields.some((f) => f.field_key === cleanKey)) {
-        alert(isArabic ? 'مفتاح الحقل موجود مسبقاً.' : 'Field key already exists.');
-        return;
+      // Server-like automatic unique internal key generation (e.g. custom_field_17)
+      const nextId = customFields.length > 0 ? Math.max(...customFields.map((f) => f.id)) + 1 : 1;
+      let internalKey = `custom_field_${nextId}`;
+      let counter = nextId;
+      while (customFields.some((f) => f.field_key === internalKey)) {
+        counter++;
+        internalKey = `custom_field_${counter}`;
       }
 
       const newField: CustomField = {
-        id: Date.now(),
+        id: nextId,
         entity: 'employee',
-        field_key: cleanKey,
-        field_label: cfFormData.field_label.trim(),
+        field_key: internalKey,
+        field_label: labelTrimmed,
         field_type: cfFormData.field_type,
         description: cfFormData.description.trim() || null,
         is_required: cfFormData.is_required,
@@ -458,8 +452,8 @@ export const AdminView: React.FC<AdminViewProps> = ({
           if (f.id === cfFormData.id) {
             return {
               ...f,
-              field_key: cleanKey,
-              field_label: cfFormData.field_label.trim(),
+              // field_key remains unchanged
+              field_label: labelTrimmed,
               field_type: cfFormData.field_type,
               description: cfFormData.description.trim() || null,
               is_required: cfFormData.is_required,
@@ -514,8 +508,8 @@ export const AdminView: React.FC<AdminViewProps> = ({
     if (!cfSearchQuery) return true;
     return (
       f.field_label.toLowerCase().includes(cfSearchQuery.toLowerCase()) ||
-      f.field_key.toLowerCase().includes(cfSearchQuery.toLowerCase()) ||
-      f.field_type.toLowerCase().includes(cfSearchQuery.toLowerCase())
+      f.field_type.toLowerCase().includes(cfSearchQuery.toLowerCase()) ||
+      (f.description && f.description.toLowerCase().includes(cfSearchQuery.toLowerCase()))
     );
   });
 
@@ -1408,8 +1402,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                       <table className="w-full text-xs text-left border-collapse">
                         <thead>
                           <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
-                            <th className="py-2.5 px-3">{isArabic ? 'اسم الحقل' : 'Field Label'}</th>
-                            <th className="py-2.5 px-3">{isArabic ? 'المفتاح البرمجي' : 'Field Key'}</th>
+                            <th className="py-2.5 px-3">{isArabic ? 'اسم الحقل' : 'Field'}</th>
                             <th className="py-2.5 px-3">{isArabic ? 'النوع' : 'Type'}</th>
                             <th className="py-2.5 px-3 text-center">{isArabic ? 'إلزامي' : 'Required'}</th>
                             <th className="py-2.5 px-3 text-center">{isArabic ? 'الحالة' : 'Status'}</th>
@@ -1427,11 +1420,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
                                     {field.description}
                                   </div>
                                 )}
-                              </td>
-                              <td className="py-2.5 px-3">
-                                <code className="font-mono text-[11px] bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded border border-slate-200">
-                                  {field.field_key}
-                                </code>
                               </td>
                               <td className="py-2.5 px-3 text-slate-700 capitalize">
                                 <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[11px]">
@@ -2405,32 +2393,9 @@ export const AdminView: React.FC<AdminViewProps> = ({
                   required
                   value={cfFormData.field_label}
                   onChange={(e) => handleCfLabelChange(e.target.value)}
-                  placeholder={isArabic ? 'مثال: رقم البصمة، الوردية' : 'e.g. Fingerprint Code, Work Shift'}
+                  placeholder={isArabic ? 'مثال: رقم جهاز البصمة، الوردية' : 'e.g. Fingerprint Device ID, Work Shift'}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 />
-              </div>
-
-              {/* Field Key */}
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">
-                  {isArabic ? 'المفتاح البرمجي (Field Key) *' : 'Field Key (Programmatic ID) *'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  pattern="^[a-z0-9][a-z0-9_]{1,99}$"
-                  value={cfFormData.field_key}
-                  onChange={(e) =>
-                    setCfFormData({ ...cfFormData, field_key: e.target.value, isManualKey: true })
-                  }
-                  placeholder="e.g. fingerprint_code"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none font-mono"
-                />
-                <span className="text-[11px] text-slate-400 block mt-0.5">
-                  {isArabic
-                    ? 'أحرف إنجليزية صغيرة مع شرطات سفلية فقط (مثل: work_shift).'
-                    : 'Lowercase alphanumeric with underscores (e.g. work_shift).'}
-                </span>
               </div>
 
               {/* Field Type */}
@@ -2612,8 +2577,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
                   {isArabic ? 'هل أنت متأكد من رغبتك في حذف الحقل' : 'Are you sure you want to permanently delete'}{' '}
-                  <strong className="text-slate-900">{cfDeleteModalField.field_label}</strong> (
-                  <code className="font-mono text-[11px]">{cfDeleteModalField.field_key}</code>)؟
+                  <strong className="text-slate-900">{cfDeleteModalField.field_label}</strong>؟
                 </p>
               </div>
             </div>

@@ -226,8 +226,9 @@ class NDS_HR_Admin_Settings {
 			exit;
 		}
 
-		$field_id    = (int) $result;
-		$current_uid = NDS_HR_Session::get_current_user_id();
+		$field_id      = (int) $result;
+		$created_field = NDS_HR_Custom_Fields::get_field( $field_id );
+		$current_uid   = NDS_HR_Session::get_current_user_id();
 
 		NDS_HR_Audit_Logger::log(
 			'custom_field_created',
@@ -236,7 +237,7 @@ class NDS_HR_Admin_Settings {
 			array(),
 			array(
 				'entity'      => $entity,
-				'field_key'   => $field_key,
+				'field_key'   => $created_field ? $created_field->field_key : $field_key,
 				'field_label' => $field_label,
 				'field_type'  => $field_type,
 				'is_required' => $is_required,
@@ -272,7 +273,7 @@ class NDS_HR_Admin_Settings {
 		}
 
 		$field_label = isset( $_POST['field_label'] ) ? sanitize_text_field( wp_unslash( $_POST['field_label'] ) ) : $existing->field_label;
-		$field_key   = isset( $_POST['field_key'] ) ? strtolower( sanitize_key( wp_unslash( $_POST['field_key'] ) ) ) : $existing->field_key;
+		$field_key   = $existing->field_key; // Preserve existing internal field_key
 		$field_type  = isset( $_POST['field_type'] ) ? sanitize_key( wp_unslash( $_POST['field_type'] ) ) : $existing->field_type;
 		$description = isset( $_POST['description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['description'] ) ) : '';
 		$is_required = ! empty( $_POST['is_required'] ) ? 1 : 0;
