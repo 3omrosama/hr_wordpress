@@ -3,7 +3,7 @@
  * Plugin Name:       NDS HR
  * Plugin URI:        https://nds-hr.local
  * Description:       A modern, production-ready HR Management System for WordPress. Includes employee management, custom database tables, role-based access control, audit logs, and employee self-service portal.
- * Version:           1.0.0
+ * Version:           2.0.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            NDS HR Team
