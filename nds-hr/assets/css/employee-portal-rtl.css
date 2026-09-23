@@ -1,0 +1,25 @@
+/**
+ * NDS HR — Employee Portal RTL Stylesheet
+ */
+
+[dir="rtl"] body.nds-hr-portal-body {
+	text-align: right;
+}
+
+[dir="rtl"] .nds-hr-badge-phase {
+	right: auto;
+	left: 12px;
+}
+
+[dir="rtl"] .nds-hr-portal-sidebar {
+	border-left: 1px solid var(--nds-hr-slate-700);
+	border-right: none;
+}
+
+[dir="rtl"] .nds-hr-portal-topbar {
+	text-align: right;
+}
+
+[dir="rtl"] .nds-hr-dl {
+	text-align: right;
+}

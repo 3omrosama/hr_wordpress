@@ -1,0 +1,6 @@
+{
+  "name": "NDS HR",
+  "description": "Production-ready WordPress HR Management System plugin featuring employee management, custom database architecture, RBAC roles, audit logs, and employee portal.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

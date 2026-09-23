@@ -1,0 +1,42 @@
+/**
+ * NDS HR — Admin RTL Stylesheet
+ * Arabic and RTL text alignment & direction adjustments.
+ */
+
+body.rtl .nds-hr-wrap,
+[dir="rtl"] .nds-hr-wrap {
+	margin: 20px 0 40px 20px;
+	text-align: right;
+}
+
+[dir="rtl"] .nds-hr-table {
+	text-align: right;
+}
+
+[dir="rtl"] .text-right {
+	text-align: left;
+}
+
+[dir="rtl"] .nds-hr-action-group {
+	justify-content: flex-start;
+}
+
+[dir="rtl"] .nds-hr-search-icon {
+	left: auto;
+	right: 10px;
+}
+
+[dir="rtl"] .nds-hr-search-input {
+	padding-left: 12px !important;
+	padding-right: 36px !important;
+}
+
+[dir="rtl"] .nds-hr-page-link &laquo; {
+	display: inline-block;
+	transform: scaleX(-1);
+}
+
+[dir="rtl"] .nds-hr-page-link &raquo; {
+	display: inline-block;
+	transform: scaleX(-1);
+}
