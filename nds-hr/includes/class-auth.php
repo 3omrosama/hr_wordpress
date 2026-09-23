@@ -234,7 +234,7 @@ class NDS_HR_Auth {
 				'user_logged_out',
 				'hr_user',
 				$current_user->id,
-				null,
+				array(),
 				array( 'username' => $current_user->username )
 			);
 		}
@@ -392,7 +392,7 @@ class NDS_HR_Auth {
 			'first_hr_admin_created',
 			'hr_user',
 			$new_user_id,
-			null,
+			array(),
 			array( 'username' => $username, 'email' => $email )
 		);
 
@@ -495,7 +495,7 @@ class NDS_HR_Auth {
 				'login_failed_bad_password',
 				'hr_user',
 				$user->id,
-				null,
+				array(),
 				array( 'identifier' => $identifier )
 			);
 
@@ -511,7 +511,7 @@ class NDS_HR_Auth {
 			'user_logged_in',
 			'hr_user',
 			$user->id,
-			null,
+			array(),
 			array( 'username' => $user->username, 'role' => $user->role_slug )
 		);
 
@@ -661,7 +661,7 @@ class NDS_HR_Auth {
 							'password_reset_requested',
 							'hr_user',
 							$user->id,
-							null,
+							array(),
 							array( 'email' => $user->email )
 						);
 					}
@@ -718,7 +718,7 @@ class NDS_HR_Auth {
 							'password_reset_completed',
 							'hr_user',
 							$user->id,
-							null,
+							array(),
 							array( 'username' => $user->username )
 						);
 

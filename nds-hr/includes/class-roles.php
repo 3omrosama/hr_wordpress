@@ -424,7 +424,7 @@ class NDS_HR_Roles {
 			'role_permissions_updated',
 			'role_matrix',
 			0,
-			null,
+			array(),
 			array( 'updated_roles' => array_keys( $sanitized_matrix ) )
 		);
 
@@ -449,7 +449,7 @@ class NDS_HR_Roles {
 			'role_permissions_reset',
 			'role_matrix',
 			0,
-			null,
+			array(),
 			array( 'action' => 'reset_to_defaults' )
 		);
 	}

@@ -17,20 +17,23 @@ class NDS_HR_Audit_Logger {
 	/**
 	 * Log an administrative or employee action.
 	 *
-	 * @param string $action      E.g., 'employee_created', 'employee_deactivated'.
-	 * @param string $entity_type E.g., 'employee', 'department'.
-	 * @param int    $entity_id   Database ID of the affected entity.
-	 * @param array  $old_values  Previous state snapshot.
-	 * @param array  $new_values  Updated state snapshot.
-	 * @param int    $user_id     Actor WP User ID (defaults to current user).
+	 * @param string     $action      E.g., 'employee_created', 'employee_deactivated'.
+	 * @param string     $entity_type E.g., 'employee', 'department'.
+	 * @param int        $entity_id   Database ID of the affected entity.
+	 * @param array|null $old_values  Previous state snapshot.
+	 * @param array|null $new_values  Updated state snapshot.
+	 * @param int        $user_id     Actor WP User ID (defaults to current user).
 	 * @return int|false Inserted log ID on success, false on failure.
 	 */
-	public static function log( $action, $entity_type, $entity_id, array $old_values = array(), array $new_values = array(), $user_id = 0 ) {
+	public static function log( $action, $entity_type, $entity_id, $old_values = array(), $new_values = array(), $user_id = 0 ) {
 		global $wpdb;
 
 		if ( empty( $user_id ) ) {
 			$user_id = get_current_user_id();
 		}
+
+		$old_values = is_array( $old_values ) ? $old_values : array();
+		$new_values = is_array( $new_values ) ? $new_values : array();
 
 		$table = NDS_HR_Database::audit_logs_table();
 
