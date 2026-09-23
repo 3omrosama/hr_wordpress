@@ -560,6 +560,258 @@ $salary_currency = $is_edit && ! empty( $employee->salary_currency ) ? $employee
 					</div>
 				</div>
 
+				<?php
+				// Section: Custom Fields (Phase 2C-1: ONLY on Add Employee; do not render on Edit yet)
+				$active_custom_fields = ! $is_edit ? NDS_HR_Custom_Fields::get_active_fields( 'employee' ) : array();
+				if ( ! empty( $active_custom_fields ) ) :
+				?>
+				<!-- SECTION 6: Custom Fields (Add Employee Only) -->
+				<div class="nds-hr-card nds-hr-form-section" id="nds-hr-custom-fields-section">
+					<div class="nds-hr-card-header">
+						<h2 class="nds-hr-card-title">
+							<span class="dashicons dashicons-forms nds-hr-card-icon"></span>
+							<?php esc_html_e( '6. Custom Fields', 'nds-hr' ); ?>
+						</h2>
+					</div>
+
+					<div class="nds-hr-custom-fields-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+						<?php foreach ( $active_custom_fields as $cf ) :
+							$field_key      = $cf->field_key;
+							$field_label    = $cf->field_label;
+							$field_type     = $cf->field_type;
+							$is_required    = ! empty( $cf->is_required );
+							$description    = $cf->description;
+							$settings       = is_array( $cf->settings ) ? $cf->settings : array();
+							$options        = isset( $settings['options'] ) && is_array( $settings['options'] ) ? $settings['options'] : array();
+							$input_name     = 'custom_fields[' . esc_attr( $field_key ) . ']';
+							$field_id_attr  = 'cf_' . esc_attr( $field_key );
+							$submitted_val  = isset( $_POST['custom_fields'][ $field_key ] ) ? $_POST['custom_fields'][ $field_key ] : null;
+						?>
+							<div class="nds-hr-field-group" style="<?php echo 'textarea' === $field_type ? 'grid-column: 1 / -1;' : ''; ?>">
+								<label class="nds-hr-label" for="<?php echo esc_attr( $field_id_attr ); ?>">
+									<?php echo esc_html( $field_label ); ?>
+									<?php if ( $is_required ) : ?>
+										<span style="color: #DC2626; margin-left: 2px;">*</span>
+									<?php endif; ?>
+								</label>
+
+								<?php switch ( $field_type ) :
+									case 'textarea': ?>
+										<textarea
+											id="<?php echo esc_attr( $field_id_attr ); ?>"
+											name="<?php echo esc_attr( $input_name ); ?>"
+											rows="3"
+											class="nds-hr-input"
+											<?php echo $is_required ? 'required' : ''; ?>
+											placeholder="<?php echo esc_attr( $field_label ); ?>"
+										><?php echo esc_textarea( null !== $submitted_val ? (string) $submitted_val : '' ); ?></textarea>
+										<?php break; ?>
+
+									<?php case 'number': ?>
+										<input
+											type="number"
+											step="any"
+											id="<?php echo esc_attr( $field_id_attr ); ?>"
+											name="<?php echo esc_attr( $input_name ); ?>"
+											value="<?php echo esc_attr( null !== $submitted_val ? (string) $submitted_val : '' ); ?>"
+											class="nds-hr-input"
+											<?php echo $is_required ? 'required' : ''; ?>
+											placeholder="0"
+										>
+										<?php break; ?>
+
+									<?php case 'email': ?>
+										<input
+											type="email"
+											id="<?php echo esc_attr( $field_id_attr ); ?>"
+											name="<?php echo esc_attr( $input_name ); ?>"
+											value="<?php echo esc_attr( null !== $submitted_val ? (string) $submitted_val : '' ); ?>"
+											class="nds-hr-input"
+											<?php echo $is_required ? 'required' : ''; ?>
+											placeholder="user@example.com"
+										>
+										<?php break; ?>
+
+									<?php case 'phone': ?>
+										<input
+											type="tel"
+											id="<?php echo esc_attr( $field_id_attr ); ?>"
+											name="<?php echo esc_attr( $input_name ); ?>"
+											value="<?php echo esc_attr( null !== $submitted_val ? (string) $submitted_val : '' ); ?>"
+											class="nds-hr-input"
+											<?php echo $is_required ? 'required' : ''; ?>
+											placeholder="+20 10xxxxxxxx / +966 5xxxxxxxx"
+										>
+										<?php break; ?>
+
+									<?php case 'date': ?>
+										<div class="nds-hr-datepicker-wrap">
+											<input
+												type="text"
+												id="<?php echo esc_attr( $field_id_attr ); ?>"
+												name="<?php echo esc_attr( $input_name ); ?>"
+												value="<?php echo esc_attr( null !== $submitted_val ? (string) $submitted_val : '' ); ?>"
+												class="nds-hr-input js-datepicker js-date-field"
+												placeholder="DD/MM/YYYY"
+												autocomplete="off"
+												<?php echo $is_required ? 'required' : ''; ?>
+											>
+											<button type="button" class="nds-hr-datepicker-btn js-datepicker-toggle" aria-label="<?php esc_attr_e( 'Choose date', 'nds-hr' ); ?>">
+												<span class="dashicons dashicons-calendar-alt"></span>
+											</button>
+										</div>
+										<?php break; ?>
+
+									<?php case 'select': ?>
+										<select
+											id="<?php echo esc_attr( $field_id_attr ); ?>"
+											name="<?php echo esc_attr( $input_name ); ?>"
+											class="nds-hr-select"
+											<?php echo $is_required ? 'required' : ''; ?>
+										>
+											<option value=""><?php esc_html_e( '-- Select Option --', 'nds-hr' ); ?></option>
+											<?php foreach ( $options as $opt ) :
+												$opt_val = is_array( $opt ) ? ( $opt['value'] ?? '' ) : ( is_object( $opt ) ? ( $opt->value ?? '' ) : $opt );
+												$opt_lbl = is_array( $opt ) ? ( $opt['label'] ?? $opt_val ) : ( is_object( $opt ) ? ( $opt->label ?? $opt_val ) : $opt );
+											?>
+												<option value="<?php echo esc_attr( $opt_val ); ?>" <?php selected( (string) $submitted_val, (string) $opt_val ); ?>>
+													<?php echo esc_html( $opt_lbl ); ?>
+												</option>
+											<?php endforeach; ?>
+										</select>
+										<?php break; ?>
+
+									<?php case 'multiselect': ?>
+										<select
+											id="<?php echo esc_attr( $field_id_attr ); ?>"
+											name="<?php echo esc_attr( $input_name ); ?>[]"
+											multiple
+											class="nds-hr-select"
+											style="min-height: 90px;"
+											<?php echo $is_required ? 'required' : ''; ?>
+										>
+											<?php
+											$selected_array = is_array( $submitted_val ) ? $submitted_val : ( null !== $submitted_val ? array( $submitted_val ) : array() );
+											foreach ( $options as $opt ) :
+												$opt_val = is_array( $opt ) ? ( $opt['value'] ?? '' ) : ( is_object( $opt ) ? ( $opt->value ?? '' ) : $opt );
+												$opt_lbl = is_array( $opt ) ? ( $opt['label'] ?? $opt_val ) : ( is_object( $opt ) ? ( $opt->label ?? $opt_val ) : $opt );
+											?>
+												<option value="<?php echo esc_attr( $opt_val ); ?>" <?php echo in_array( (string) $opt_val, array_map( 'strval', $selected_array ), true ) ? 'selected' : ''; ?>>
+													<?php echo esc_html( $opt_lbl ); ?>
+												</option>
+											<?php endforeach; ?>
+										</select>
+										<?php break; ?>
+
+									<?php case 'radio': ?>
+										<div class="nds-hr-radio-group" style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;">
+											<?php foreach ( $options as $opt_idx => $opt ) :
+												$opt_val = is_array( $opt ) ? ( $opt['value'] ?? '' ) : ( is_object( $opt ) ? ( $opt->value ?? '' ) : $opt );
+												$opt_lbl = is_array( $opt ) ? ( $opt['label'] ?? $opt_val ) : ( is_object( $opt ) ? ( $opt->label ?? $opt_val ) : $opt );
+												$radio_id = $field_id_attr . '_' . $opt_idx;
+											?>
+												<label for="<?php echo esc_attr( $radio_id ); ?>" class="nds-hr-radio-label" style="display: flex; align-items: center; gap: 6px; font-weight: normal; cursor: pointer;">
+													<input
+														type="radio"
+														id="<?php echo esc_attr( $radio_id ); ?>"
+														name="<?php echo esc_attr( $input_name ); ?>"
+														value="<?php echo esc_attr( $opt_val ); ?>"
+														<?php checked( (string) $submitted_val, (string) $opt_val ); ?>
+														<?php echo $is_required ? 'required' : ''; ?>
+													>
+													<span><?php echo esc_html( $opt_lbl ); ?></span>
+												</label>
+											<?php endforeach; ?>
+										</div>
+										<?php break; ?>
+
+									<?php case 'checkbox': ?>
+										<div class="nds-hr-checkbox-group" style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;">
+											<?php
+											$checked_array = is_array( $submitted_val ) ? $submitted_val : ( null !== $submitted_val ? array( $submitted_val ) : array() );
+											if ( empty( $options ) ) :
+											?>
+												<label for="<?php echo esc_attr( $field_id_attr ); ?>" class="nds-hr-checkbox-label" style="display: flex; align-items: center; gap: 6px; font-weight: normal; cursor: pointer;">
+													<input
+														type="checkbox"
+														id="<?php echo esc_attr( $field_id_attr ); ?>"
+														name="<?php echo esc_attr( $input_name ); ?>"
+														value="1"
+														<?php checked( ! empty( $submitted_val ) ); ?>
+														<?php echo $is_required ? 'required' : ''; ?>
+													>
+													<span><?php echo esc_html( $field_label ); ?></span>
+												</label>
+											<?php else :
+												foreach ( $options as $opt_idx => $opt ) :
+													$opt_val = is_array( $opt ) ? ( $opt['value'] ?? '' ) : ( is_object( $opt ) ? ( $opt->value ?? '' ) : $opt );
+													$opt_lbl = is_array( $opt ) ? ( $opt['label'] ?? $opt_val ) : ( is_object( $opt ) ? ( $opt->label ?? $opt_val ) : $opt );
+													$cb_id   = $field_id_attr . '_' . $opt_idx;
+												?>
+													<label for="<?php echo esc_attr( $cb_id ); ?>" class="nds-hr-checkbox-label" style="display: flex; align-items: center; gap: 6px; font-weight: normal; cursor: pointer;">
+														<input
+															type="checkbox"
+															id="<?php echo esc_attr( $cb_id ); ?>"
+															name="<?php echo esc_attr( $input_name ); ?>[]"
+															value="<?php echo esc_attr( $opt_val ); ?>"
+															<?php echo in_array( (string) $opt_val, array_map( 'strval', $checked_array ), true ) ? 'checked' : ''; ?>
+														>
+														<span><?php echo esc_html( $opt_lbl ); ?></span>
+													</label>
+												<?php endforeach;
+											endif; ?>
+										</div>
+										<?php break; ?>
+
+									<?php case 'yes_no': ?>
+										<div class="nds-hr-yesno-group" style="display: flex; gap: 16px; margin-top: 4px;">
+											<label class="nds-hr-radio-label" style="display: flex; align-items: center; gap: 6px; font-weight: normal; cursor: pointer;">
+												<input
+													type="radio"
+													name="<?php echo esc_attr( $input_name ); ?>"
+													value="1"
+													<?php checked( (string) $submitted_val, '1' ); ?>
+													<?php echo $is_required ? 'required' : ''; ?>
+												>
+												<span><?php esc_html_e( 'Yes', 'nds-hr' ); ?></span>
+											</label>
+											<label class="nds-hr-radio-label" style="display: flex; align-items: center; gap: 6px; font-weight: normal; cursor: pointer;">
+												<input
+													type="radio"
+													name="<?php echo esc_attr( $input_name ); ?>"
+													value="0"
+													<?php checked( (string) $submitted_val, '0' ); ?>
+													<?php echo $is_required ? 'required' : ''; ?>
+												>
+												<span><?php esc_html_e( 'No', 'nds-hr' ); ?></span>
+											</label>
+										</div>
+										<?php break; ?>
+
+									<?php default: // 'text' ?>
+										<input
+											type="text"
+											id="<?php echo esc_attr( $field_id_attr ); ?>"
+											name="<?php echo esc_attr( $input_name ); ?>"
+											value="<?php echo esc_attr( null !== $submitted_val ? (string) $submitted_val : '' ); ?>"
+											class="nds-hr-input"
+											<?php echo $is_required ? 'required' : ''; ?>
+											placeholder="<?php echo esc_attr( $field_label ); ?>"
+										>
+										<?php break; ?>
+								<?php endswitch; ?>
+
+								<?php if ( ! empty( $description ) ) : ?>
+									<small class="nds-hr-help-text" style="margin-top: 4px; display: block; color: #64748B; font-size: 11px;">
+										<?php echo esc_html( $description ); ?>
+									</small>
+								<?php endif; ?>
+							</div>
+						<?php endforeach; ?>
+					</div>
+				</div>
+				<?php endif; ?>
+
 			</div>
 
 			<!-- Right Column: NDS HR Account & Save Action -->

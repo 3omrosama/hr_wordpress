@@ -219,6 +219,216 @@ class NDS_HR_Custom_Fields {
 		return false;
 	}
 
+	/**
+	 * Validate and sanitize submitted custom field values for an entity.
+	 * Only processes currently ACTIVE fields for that entity.
+	 *
+	 * @param array  $raw_input Submitted key-value pairs (e.g. $_POST['custom_fields']).
+	 * @param string $entity    Target entity (default: 'employee').
+	 * @return array|WP_Error  Sanitized [ field_key => sanitized_value ] on success, WP_Error on validation failure.
+	 */
+	public static function validate_submission( array $raw_input, $entity = 'employee' ) {
+		$active_fields = self::get_active_fields( $entity );
+		$sanitized     = array();
+
+		foreach ( $active_fields as $field ) {
+			$key       = $field->field_key;
+			$label     = $field->field_label;
+			$type      = $field->field_type;
+			$required  = (bool) $field->is_required;
+			$settings  = is_array( $field->settings ) ? $field->settings : array();
+			$raw_value = isset( $raw_input[ $key ] ) ? $raw_input[ $key ] : null;
+
+			// Check if value is logically empty
+			$is_empty = false;
+			if ( null === $raw_value ) {
+				$is_empty = true;
+			} elseif ( is_string( $raw_value ) && '' === trim( $raw_value ) ) {
+				$is_empty = true;
+			} elseif ( is_array( $raw_value ) ) {
+				$filtered = array_filter( $raw_value, function( $v ) {
+					return is_scalar( $v ) && '' !== trim( (string) $v );
+				} );
+				if ( empty( $filtered ) ) {
+					$is_empty = true;
+				}
+			}
+
+			// Required check
+			if ( $required && $is_empty ) {
+				return new WP_Error(
+					'required_custom_field',
+					sprintf(
+						/* translators: %s: field label */
+						__( '%s is required.', 'nds-hr' ),
+						$label
+					)
+				);
+			}
+
+			// If empty and not required, set to null and continue
+			if ( $is_empty ) {
+				$sanitized[ $key ] = null;
+				continue;
+			}
+
+			// Validate and sanitize based on field type
+			switch ( $type ) {
+				case 'text':
+					$sanitized[ $key ] = sanitize_text_field( wp_unslash( (string) $raw_value ) );
+					break;
+
+				case 'textarea':
+					$sanitized[ $key ] = sanitize_textarea_field( wp_unslash( (string) $raw_value ) );
+					break;
+
+				case 'number':
+					$val_str = trim( (string) wp_unslash( $raw_value ) );
+					if ( ! is_numeric( $val_str ) ) {
+						return new WP_Error(
+							'invalid_number',
+							sprintf(
+								/* translators: %s: field label */
+								__( '%s must be a valid number.', 'nds-hr' ),
+								$label
+							)
+						);
+					}
+					$sanitized[ $key ] = $val_str + 0;
+					break;
+
+				case 'email':
+					$val_str = sanitize_email( wp_unslash( (string) $raw_value ) );
+					if ( ! is_email( $val_str ) ) {
+						return new WP_Error(
+							'invalid_email',
+							sprintf(
+								/* translators: %s: field label */
+								__( '%s must be a valid email address.', 'nds-hr' ),
+								$label
+							)
+						);
+					}
+					$sanitized[ $key ] = $val_str;
+					break;
+
+				case 'phone':
+					$sanitized[ $key ] = sanitize_text_field( wp_unslash( (string) $raw_value ) );
+					break;
+
+				case 'date':
+					$val_str  = trim( sanitize_text_field( wp_unslash( (string) $raw_value ) ) );
+					$sql_date = NDS_HR_Security::parse_date_to_sql( $val_str );
+					if ( ! $sql_date ) {
+						return new WP_Error(
+							'invalid_date',
+							sprintf(
+								/* translators: %s: field label */
+								__( '%s must be a valid date.', 'nds-hr' ),
+								$label
+							)
+						);
+					}
+					$sanitized[ $key ] = $sql_date;
+					break;
+
+				case 'select':
+				case 'radio':
+					$val_str = sanitize_text_field( wp_unslash( (string) $raw_value ) );
+					$allowed_options = isset( $settings['options'] ) && is_array( $settings['options'] ) ? $settings['options'] : array();
+					$allowed_values  = array();
+					foreach ( $allowed_options as $opt ) {
+						if ( is_array( $opt ) ) {
+							if ( isset( $opt['value'] ) && '' !== (string) $opt['value'] ) {
+								$allowed_values[] = (string) $opt['value'];
+							}
+							if ( isset( $opt['label'] ) && '' !== (string) $opt['label'] ) {
+								$allowed_values[] = (string) $opt['label'];
+							}
+						} elseif ( is_object( $opt ) ) {
+							if ( isset( $opt->value ) && '' !== (string) $opt->value ) {
+								$allowed_values[] = (string) $opt->value;
+							}
+							if ( isset( $opt->label ) && '' !== (string) $opt->label ) {
+								$allowed_values[] = (string) $opt->label;
+							}
+						} elseif ( is_string( $opt ) && '' !== $opt ) {
+							$allowed_values[] = $opt;
+						}
+					}
+
+					if ( ! empty( $allowed_values ) && ! in_array( $val_str, $allowed_values, true ) ) {
+						return new WP_Error(
+							'invalid_option',
+							sprintf(
+								/* translators: %s: field label */
+								__( 'Invalid option selected for %s.', 'nds-hr' ),
+								$label
+							)
+						);
+					}
+					$sanitized[ $key ] = $val_str;
+					break;
+
+				case 'multiselect':
+				case 'checkbox':
+					$raw_arr = is_array( $raw_value ) ? $raw_value : array( $raw_value );
+					$allowed_options = isset( $settings['options'] ) && is_array( $settings['options'] ) ? $settings['options'] : array();
+					$allowed_values  = array();
+					foreach ( $allowed_options as $opt ) {
+						if ( is_array( $opt ) ) {
+							if ( isset( $opt['value'] ) && '' !== (string) $opt['value'] ) {
+								$allowed_values[] = (string) $opt['value'];
+							}
+							if ( isset( $opt['label'] ) && '' !== (string) $opt['label'] ) {
+								$allowed_values[] = (string) $opt['label'];
+							}
+						} elseif ( is_object( $opt ) ) {
+							if ( isset( $opt->value ) && '' !== (string) $opt->value ) {
+								$allowed_values[] = (string) $opt->value;
+							}
+							if ( isset( $opt->label ) && '' !== (string) $opt->label ) {
+								$allowed_values[] = (string) $opt->label;
+							}
+						} elseif ( is_string( $opt ) && '' !== $opt ) {
+							$allowed_values[] = $opt;
+						}
+					}
+
+					$clean_arr = array();
+					foreach ( $raw_arr as $item ) {
+						$clean_item = sanitize_text_field( wp_unslash( (string) $item ) );
+						if ( '' === $clean_item ) {
+							continue;
+						}
+						if ( ! empty( $allowed_values ) && ! in_array( $clean_item, $allowed_values, true ) ) {
+							return new WP_Error(
+								'invalid_option',
+								sprintf(
+									/* translators: %s: field label */
+									__( 'Invalid option selected for %s.', 'nds-hr' ),
+									$label
+								)
+							);
+						}
+						$clean_arr[] = $clean_item;
+					}
+					$sanitized[ $key ] = $clean_arr;
+					break;
+
+				case 'yes_no':
+					$sanitized[ $key ] = ( '1' === (string) $raw_value || 'yes' === strtolower( (string) $raw_value ) || true === $raw_value || 1 === $raw_value ) ? 1 : 0;
+					break;
+
+				default:
+					$sanitized[ $key ] = sanitize_text_field( wp_unslash( (string) $raw_value ) );
+					break;
+			}
+		}
+
+		return $sanitized;
+	}
+
 	/* =========================================================================
 	   FIELD DEFINITION CRUD OPERATIONS
 	   ========================================================================= */

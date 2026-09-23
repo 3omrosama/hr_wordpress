@@ -68,6 +68,28 @@ class NDS_HR_Admin_Employees {
 				exit;
 			}
 
+			// 1.1 Validate Custom Fields for Add Employee (Phase 2C-1)
+			$custom_field_values = array();
+			if ( 0 === $employee_db_id ) {
+				$submitted_cf = isset( $_POST['custom_fields'] ) && is_array( $_POST['custom_fields'] ) ? $_POST['custom_fields'] : array();
+				$cf_result    = NDS_HR_Custom_Fields::validate_submission( $submitted_cf, 'employee' );
+
+				if ( is_wp_error( $cf_result ) ) {
+					$redirect_url = add_query_arg(
+						array(
+							'page'   => 'nds-hr-employees',
+							'action' => 'add',
+							'error'  => urlencode( $cf_result->get_error_message() ),
+						),
+						admin_url( 'admin.php' )
+					);
+					wp_safe_redirect( $redirect_url );
+					exit;
+				}
+
+				$custom_field_values = $cf_result;
+			}
+
 			$existing_emp = $employee_db_id > 0 ? $repo->find_by_id( $employee_db_id ) : null;
 
 			// Handle Profile Photo Upload
@@ -172,6 +194,13 @@ class NDS_HR_Admin_Employees {
 						)
 					);
 					exit;
+				}
+
+				$new_emp_id = is_array( $new_result ) && ! empty( $new_result['employee_db_id'] ) ? (int) $new_result['employee_db_id'] : (int) $new_result;
+
+				// Save custom field values using Custom Fields Service
+				if ( $new_emp_id > 0 && ! empty( $custom_field_values ) ) {
+					NDS_HR_Custom_Fields::set_values( $new_emp_id, $custom_field_values, 'employee' );
 				}
 
 				$redirect_args = array(
