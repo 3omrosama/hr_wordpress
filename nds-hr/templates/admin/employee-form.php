@@ -1,6 +1,7 @@
 <?php
 /**
  * Admin Employee Form Template (Create & Edit).
+ * Refined Workforce & Contract Management with Independent NDS HR Accounts.
  *
  * @package NDS_HR
  */
@@ -12,7 +13,47 @@ if ( ! defined( 'ABSPATH' ) ) {
 $dir     = NDS_HR_I18n::get_direction();
 $is_rtl  = NDS_HR_I18n::is_rtl();
 $is_edit = isset( $employee ) && ! empty( $employee->id );
-$title   = $is_edit ? __( 'Edit Employee', 'nds-hr' ) : __( 'Add New Employee', 'nds-hr' );
+$title   = $is_edit ? __( 'Edit Employee Profile', 'nds-hr' ) : __( 'Add New Employee', 'nds-hr' );
+
+// Format Dates for UI Display (DD/MM/YYYY)
+$formatted_dob            = $is_edit && ! empty( $employee->date_of_birth ) ? NDS_HR_Security::format_date_for_display( $employee->date_of_birth ) : '';
+$formatted_hire_date      = $is_edit && ! empty( $employee->hire_date ) ? NDS_HR_Security::format_date_for_display( $employee->hire_date ) : date( 'd/m/Y' );
+$formatted_contract_start = $is_edit && ! empty( $employee->contract_start_date ) ? NDS_HR_Security::format_date_for_display( $employee->contract_start_date ) : $formatted_hire_date;
+$formatted_contract_end   = $is_edit && ! empty( $employee->contract_end_date ) ? NDS_HR_Security::format_date_for_display( $employee->contract_end_date ) : '';
+
+// Calculate initial contract duration
+$initial_duration = $is_edit && ! empty( $employee->contract_start_date )
+	? NDS_HR_Security::calculate_contract_duration( $employee->contract_start_date, $employee->contract_end_date )
+	: __( 'Open-ended / Indefinite contract', 'nds-hr' );
+
+// Determine Phone Country Code and Local Number
+$phone_country = '+20';
+$local_mobile  = '';
+
+if ( $is_edit ) {
+	$raw_phone = ! empty( $employee->mobile ) ? (string) $employee->mobile : ( ! empty( $employee->phone ) ? (string) $employee->phone : '' );
+	if ( ! empty( $employee->phone_country_code ) ) {
+		$phone_country = $employee->phone_country_code;
+	} elseif ( 0 === strpos( $raw_phone, '+966' ) ) {
+		$phone_country = '+966';
+	}
+
+	// Extract digits without prefix
+	$digits = preg_replace( '/\D/', '', $raw_phone );
+	if ( '+966' === $phone_country && 0 === strpos( $digits, '966' ) ) {
+		$local_mobile = substr( $digits, 3 );
+	} elseif ( '+20' === $phone_country && 0 === strpos( $digits, '20' ) ) {
+		$local_mobile = substr( $digits, 2 );
+	} else {
+		$local_mobile = $digits;
+	}
+}
+
+// Current HR Account Role
+$current_account_role = 'hr_employee';
+if ( ! empty( $hr_user ) && ! empty( $hr_user->role_slug ) ) {
+	$current_account_role = $hr_user->role_slug;
+}
 ?>
 
 <div class="nds-hr-wrap" dir="<?php echo esc_attr( $dir ); ?>">
@@ -23,7 +64,7 @@ $title   = $is_edit ? __( 'Edit Employee', 'nds-hr' ) : __( 'Add New Employee', 
 			<div>
 				<h1 class="nds-hr-title"><?php echo esc_html( $title ); ?></h1>
 				<p class="nds-hr-subtitle">
-					<?php echo esc_html( $is_edit ? sprintf( __( 'Editing workforce profile: %s (%s)', 'nds-hr' ), $employee->full_name, $employee->employee_id ) : __( 'Register a new workforce member and configure their corporate account credentials.', 'nds-hr' ) ); ?>
+					<?php echo esc_html( $is_edit ? sprintf( __( 'Editing workforce profile: %s (%s)', 'nds-hr' ), $employee->full_name, $employee->employee_id ) : __( 'Register a new workforce member, employment contract, and configure independent NDS HR credentials.', 'nds-hr' ) ); ?>
 				</p>
 			</div>
 			<div class="nds-hr-header-actions">
@@ -35,51 +76,24 @@ $title   = $is_edit ? __( 'Edit Employee', 'nds-hr' ) : __( 'Add New Employee', 
 		</div>
 	</header>
 
-	<!-- Main Form -->
-	<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=nds-hr-employees' ) ); ?>" class="nds-hr-form" id="nds-hr-employee-form">
+	<!-- Main Form with File Upload Support -->
+	<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=nds-hr-employees' ) ); ?>" class="nds-hr-form" id="nds-hr-employee-form" enctype="multipart/form-data">
 		<input type="hidden" name="nds_hr_admin_action" value="save_employee">
 		<input type="hidden" name="employee_db_id" value="<?php echo esc_attr( $is_edit ? $employee->id : 0 ); ?>">
 		<?php wp_nonce_field( 'nds_hr_save_employee' ); ?>
 
 		<div class="nds-hr-form-layout">
 
-			<!-- Left Column: Primary Employee Profile -->
+			<!-- Left Column: Primary Sections -->
 			<div class="nds-hr-form-main">
 
-				<!-- Card 1: Identification & Personal Info -->
+				<!-- SECTION 1: Personal Information -->
 				<div class="nds-hr-card nds-hr-form-section">
 					<div class="nds-hr-card-header">
-						<h2 class="nds-hr-card-title"><?php esc_html_e( 'Identity & Personal Data', 'nds-hr' ); ?></h2>
-					</div>
-
-					<div class="nds-hr-fields-row">
-						<!-- Employee ID Code -->
-						<div class="nds-hr-field-group">
-							<label class="nds-hr-label" for="employee_id"><?php esc_html_e( 'Employee ID / Code *', 'nds-hr' ); ?></label>
-							<input
-								type="text"
-								id="employee_id"
-								name="employee_id"
-								value="<?php echo esc_attr( $is_edit ? $employee->employee_id : $next_code ); ?>"
-								required
-								class="nds-hr-input"
-								placeholder="e.g. NDS-00001"
-							>
-							<small class="nds-hr-help-text"><?php esc_html_e( 'Unique organization personnel identifier.', 'nds-hr' ); ?></small>
-						</div>
-
-						<!-- National ID / Iqama -->
-						<div class="nds-hr-field-group">
-							<label class="nds-hr-label" for="national_id"><?php esc_html_e( 'National ID / Iqama / Passport', 'nds-hr' ); ?></label>
-							<input
-								type="text"
-								id="national_id"
-								name="national_id"
-								value="<?php echo esc_attr( $is_edit ? $employee->national_id : '' ); ?>"
-								class="nds-hr-input"
-								placeholder="e.g. 1029384756"
-							>
-						</div>
+						<h2 class="nds-hr-card-title">
+							<span class="dashicons dashicons-admin-users nds-hr-card-icon"></span>
+							<?php esc_html_e( '1. Personal Information', 'nds-hr' ); ?>
+						</h2>
 					</div>
 
 					<div class="nds-hr-fields-row">
@@ -107,13 +121,13 @@ $title   = $is_edit ? __( 'Edit Employee', 'nds-hr' ) : __( 'Add New Employee', 
 								value="<?php echo esc_attr( $is_edit ? $employee->last_name : '' ); ?>"
 								required
 								class="nds-hr-input"
-								placeholder="e.g. Al-Mansoor"
+								placeholder="e.g. Mansoor"
 							>
 						</div>
 					</div>
 
 					<div class="nds-hr-fields-row">
-						<!-- Email -->
+						<!-- Corporate Email -->
 						<div class="nds-hr-field-group">
 							<label class="nds-hr-label" for="email"><?php esc_html_e( 'Corporate Email Address *', 'nds-hr' ); ?></label>
 							<input
@@ -123,48 +137,53 @@ $title   = $is_edit ? __( 'Edit Employee', 'nds-hr' ) : __( 'Add New Employee', 
 								value="<?php echo esc_attr( $is_edit ? $employee->email : '' ); ?>"
 								required
 								class="nds-hr-input"
-								placeholder="ahmed@example.com"
+								placeholder="ahmed.mansoor@example.com"
 							>
 						</div>
 
-						<!-- Phone -->
+						<!-- Personal Mobile with Egypt / Saudi Arabia Selector -->
 						<div class="nds-hr-field-group">
-							<label class="nds-hr-label" for="phone"><?php esc_html_e( 'Office Phone', 'nds-hr' ); ?></label>
-							<input
-								type="text"
-								id="phone"
-								name="phone"
-								value="<?php echo esc_attr( $is_edit ? $employee->phone : '' ); ?>"
-								class="nds-hr-input"
-								placeholder="+966 11 000 0000"
-							>
+							<label class="nds-hr-label" for="mobile">
+								<?php esc_html_e( 'Personal Mobile', 'nds-hr' ); ?>
+								<small class="nds-hr-muted-text" style="font-weight: normal; margin-left: 4px;">(<?php esc_html_e( 'Optional', 'nds-hr' ); ?>)</small>
+							</label>
+							<div class="nds-hr-phone-input-group" style="display: flex; gap: 6px;">
+								<select id="phone_country_code" name="phone_country_code" class="nds-hr-select" style="width: 140px; flex-shrink: 0;">
+									<option value="+20" <?php selected( $phone_country, '+20' ); ?>>🇪🇬 +20 (Egypt)</option>
+									<option value="+966" <?php selected( $phone_country, '+966' ); ?>>🇸🇦 +966 (Saudi)</option>
+								</select>
+								<input
+									type="tel"
+									id="mobile"
+									name="mobile"
+									value="<?php echo esc_attr( $local_mobile ); ?>"
+									class="nds-hr-input"
+									placeholder="<?php echo '+966' === $phone_country ? '5xxxxxxxx' : '10xxxxxxxx'; ?>"
+									style="flex: 1;"
+								>
+							</div>
+							<small class="nds-hr-help-text" id="nds-hr-phone-hint">
+								<?php echo '+966' === $phone_country ? esc_html__( 'Saudi mobile format: 9 digits starting with 5 (e.g. 50 123 4567)', 'nds-hr' ) : esc_html__( 'Egypt mobile format: 10 digits starting with 10, 11, 12, or 15 (e.g. 10 1234 5678)', 'nds-hr' ); ?>
+							</small>
 						</div>
 					</div>
 
 					<div class="nds-hr-fields-row">
-						<!-- Mobile -->
+						<!-- Date of Birth (DD/MM/YYYY) -->
 						<div class="nds-hr-field-group">
-							<label class="nds-hr-label" for="mobile"><?php esc_html_e( 'Personal Mobile', 'nds-hr' ); ?></label>
+							<label class="nds-hr-label" for="date_of_birth">
+								<?php esc_html_e( 'Date of Birth (DD/MM/YYYY)', 'nds-hr' ); ?>
+							</label>
 							<input
 								type="text"
-								id="mobile"
-								name="mobile"
-								value="<?php echo esc_attr( $is_edit ? $employee->mobile : '' ); ?>"
-								class="nds-hr-input"
-								placeholder="+966 50 000 0000"
-							>
-						</div>
-
-						<!-- Date of Birth -->
-						<div class="nds-hr-field-group">
-							<label class="nds-hr-label" for="date_of_birth"><?php esc_html_e( 'Date of Birth', 'nds-hr' ); ?></label>
-							<input
-								type="date"
 								id="date_of_birth"
 								name="date_of_birth"
-								value="<?php echo esc_attr( $is_edit ? $employee->date_of_birth : '' ); ?>"
-								class="nds-hr-input"
+								value="<?php echo esc_attr( $formatted_dob ); ?>"
+								class="nds-hr-input js-date-field"
+								placeholder="DD/MM/YYYY (e.g. 15/05/1990)"
+								pattern="(0[1-9]|[12][0-9]|3[01])[\/\-](0[1-9]|1[012])[\/\-]\d{4}"
 							>
+							<small class="nds-hr-help-text"><?php esc_html_e( 'Day / Month / Year format', 'nds-hr' ); ?></small>
 						</div>
 
 						<!-- Gender -->
@@ -178,55 +197,120 @@ $title   = $is_edit ? __( 'Edit Employee', 'nds-hr' ) : __( 'Add New Employee', 
 						</div>
 					</div>
 
-					<!-- Physical Residential Address -->
-					<div class="nds-hr-field-group">
-						<label class="nds-hr-label" for="address"><?php esc_html_e( 'Residential Address', 'nds-hr' ); ?></label>
-						<textarea id="address" name="address" rows="2" class="nds-hr-textarea" placeholder="Street, Building, City, Country"><?php echo esc_textarea( $is_edit ? $employee->address : '' ); ?></textarea>
-					</div>
-
-					<!-- Profile Photo URL -->
-					<div class="nds-hr-field-group">
-						<label class="nds-hr-label" for="profile_photo_url"><?php esc_html_e( 'Profile Photo URL', 'nds-hr' ); ?></label>
-						<input
-							type="url"
-							id="profile_photo_url"
-							name="profile_photo_url"
-							value="<?php echo esc_attr( $is_edit ? $employee->profile_photo_url : '' ); ?>"
-							placeholder="https://example.com/photo.jpg"
-							class="nds-hr-input"
-						>
-					</div>
-				</div>
-
-				<!-- Card 2: Employment & Compensation Details -->
-				<div class="nds-hr-card nds-hr-form-section">
-					<div class="nds-hr-card-header">
-						<h2 class="nds-hr-card-title"><?php esc_html_e( 'Employment Details', 'nds-hr' ); ?></h2>
-					</div>
-
 					<div class="nds-hr-fields-row">
-						<!-- Hire Date -->
+						<!-- National ID / Iqama / Passport -->
 						<div class="nds-hr-field-group">
-							<label class="nds-hr-label" for="hire_date"><?php esc_html_e( 'Hire Date *', 'nds-hr' ); ?></label>
+							<label class="nds-hr-label" for="national_id"><?php esc_html_e( 'National ID / Iqama / Passport', 'nds-hr' ); ?></label>
 							<input
-								type="date"
-								id="hire_date"
-								name="hire_date"
-								value="<?php echo esc_attr( $is_edit ? $employee->hire_date : current_time( 'Y-m-d' ) ); ?>"
-								required
+								type="text"
+								id="national_id"
+								name="national_id"
+								value="<?php echo esc_attr( $is_edit ? $employee->national_id : '' ); ?>"
 								class="nds-hr-input"
+								placeholder="e.g. 1029384756"
 							>
 						</div>
 
-						<!-- Employment Status -->
+						<!-- Residential Address -->
 						<div class="nds-hr-field-group">
-							<label class="nds-hr-label" for="employment_status"><?php esc_html_e( 'Employment Status *', 'nds-hr' ); ?></label>
-							<select id="employment_status" name="employment_status" class="nds-hr-select">
-								<option value="active" <?php selected( $is_edit ? $employee->employment_status : 'active', 'active' ); ?>><?php esc_html_e( 'Active', 'nds-hr' ); ?></option>
-								<option value="inactive" <?php selected( $is_edit ? $employee->employment_status : '', 'inactive' ); ?>><?php esc_html_e( 'Inactive', 'nds-hr' ); ?></option>
-								<option value="terminated" <?php selected( $is_edit ? $employee->employment_status : '', 'terminated' ); ?>><?php esc_html_e( 'Terminated', 'nds-hr' ); ?></option>
-								<option value="suspended" <?php selected( $is_edit ? $employee->employment_status : '', 'suspended' ); ?>><?php esc_html_e( 'Suspended', 'nds-hr' ); ?></option>
-							</select>
+							<label class="nds-hr-label" for="address"><?php esc_html_e( 'Residential Address', 'nds-hr' ); ?></label>
+							<input
+								type="text"
+								id="address"
+								name="address"
+								value="<?php echo esc_attr( $is_edit ? $employee->address : '' ); ?>"
+								class="nds-hr-input"
+								placeholder="City, District, Street"
+							>
+						</div>
+					</div>
+				</div>
+
+				<!-- SECTION 2: Profile Photo Upload -->
+				<div class="nds-hr-card nds-hr-form-section">
+					<div class="nds-hr-card-header">
+						<h2 class="nds-hr-card-title">
+							<span class="dashicons dashicons-format-image nds-hr-card-icon"></span>
+							<?php esc_html_e( '2. Profile Photo', 'nds-hr' ); ?>
+						</h2>
+					</div>
+
+					<div class="nds-hr-photo-upload-container" style="display: flex; gap: 20px; align-items: center;">
+						<!-- Image Preview Thumbnail -->
+						<div class="nds-hr-photo-preview-box" style="width: 96px; height: 96px; border-radius: 50%; border: 2px dashed #CBD5E1; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #F8FAFC; position: relative; flex-shrink: 0;">
+							<?php if ( $is_edit && ! empty( $employee->profile_photo_url ) ) : ?>
+								<img id="nds-hr-avatar-preview" src="<?php echo esc_url( $employee->profile_photo_url ); ?>" alt="Preview" style="width: 100%; height: 100%; object-fit: cover;">
+							<?php else : ?>
+								<img id="nds-hr-avatar-preview" src="" alt="Preview" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+								<span id="nds-hr-avatar-placeholder" class="dashicons dashicons-camera" style="font-size: 36px; width: 36px; height: 36px; color: #94A3B8;"></span>
+							<?php endif; ?>
+						</div>
+
+						<!-- Upload Controls -->
+						<div style="flex: 1;">
+							<label class="nds-hr-label" for="profile_photo">
+								<?php esc_html_e( 'Upload Employee Photo (JPG or PNG, max 5MB)', 'nds-hr' ); ?>
+							</label>
+							<input
+								type="file"
+								id="profile_photo"
+								name="profile_photo"
+								accept="image/png, image/jpeg, image/jpg"
+								class="nds-hr-file-input"
+							>
+							<small class="nds-hr-help-text" style="display: block; margin-top: 4px;">
+								<?php esc_html_e( 'Secure server-side validation. Uploading a new photo replaces the existing photo.', 'nds-hr' ); ?>
+							</small>
+
+							<?php if ( $is_edit && ! empty( $employee->profile_photo_url ) ) : ?>
+								<div style="margin-top: 8px;">
+									<label class="nds-hr-checkbox-label" style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #DC2626; cursor: pointer;">
+										<input type="checkbox" name="remove_profile_photo" id="remove_profile_photo" value="1">
+										<span><?php esc_html_e( 'Remove current photo', 'nds-hr' ); ?></span>
+									</label>
+								</div>
+							<?php endif; ?>
+						</div>
+					</div>
+				</div>
+
+				<!-- SECTION 3: Employment Information -->
+				<div class="nds-hr-card nds-hr-form-section">
+					<div class="nds-hr-card-header">
+						<h2 class="nds-hr-card-title">
+							<span class="dashicons dashicons-businesswoman nds-hr-card-icon"></span>
+							<?php esc_html_e( '3. Employment Information', 'nds-hr' ); ?>
+						</h2>
+					</div>
+
+					<div class="nds-hr-fields-row">
+						<!-- Employee ID Code -->
+						<div class="nds-hr-field-group">
+							<label class="nds-hr-label" for="employee_id"><?php esc_html_e( 'Employee ID / Code *', 'nds-hr' ); ?></label>
+							<input
+								type="text"
+								id="employee_id"
+								name="employee_id"
+								value="<?php echo esc_attr( $is_edit ? $employee->employee_id : $next_code ); ?>"
+								required
+								class="nds-hr-input"
+								placeholder="e.g. NDS-00001"
+							>
+						</div>
+
+						<!-- Hire Date -->
+						<div class="nds-hr-field-group">
+							<label class="nds-hr-label" for="hire_date"><?php esc_html_e( 'Hire Date (DD/MM/YYYY) *', 'nds-hr' ); ?></label>
+							<input
+								type="text"
+								id="hire_date"
+								name="hire_date"
+								value="<?php echo esc_attr( $formatted_hire_date ); ?>"
+								required
+								class="nds-hr-input js-date-field"
+								placeholder="DD/MM/YYYY"
+								pattern="(0[1-9]|[12][0-9]|3[01])[\/\-](0[1-9]|1[012])[\/\-]\d{4}"
+							>
 						</div>
 					</div>
 
@@ -258,262 +342,348 @@ $title   = $is_edit ? __( 'Edit Employee', 'nds-hr' ) : __( 'Add New Employee', 
 						</div>
 					</div>
 
-					<!-- Basic Salary Placeholder (Phase 1) -->
-					<div class="nds-hr-field-group">
-						<label class="nds-hr-label" for="basic_salary"><?php esc_html_e( 'Basic Salary Placeholder', 'nds-hr' ); ?></label>
-						<input
-							type="number"
-							step="0.01"
-							id="basic_salary"
-							name="basic_salary"
-							value="<?php echo esc_attr( $is_edit ? $employee->basic_salary : '0.00' ); ?>"
-							class="nds-hr-input"
-						>
-						<small class="nds-hr-help-text"><?php esc_html_e( 'Compensation structure will be expanded in Payroll Phase.', 'nds-hr' ); ?></small>
+					<div class="nds-hr-fields-row">
+						<!-- Employment Status -->
+						<div class="nds-hr-field-group">
+							<label class="nds-hr-label" for="employment_status"><?php esc_html_e( 'Employment Status *', 'nds-hr' ); ?></label>
+							<select id="employment_status" name="employment_status" class="nds-hr-select">
+								<option value="active" <?php selected( $is_edit ? $employee->employment_status : 'active', 'active' ); ?>><?php esc_html_e( 'Active', 'nds-hr' ); ?></option>
+								<option value="inactive" <?php selected( $is_edit ? $employee->employment_status : '', 'inactive' ); ?>><?php esc_html_e( 'Inactive', 'nds-hr' ); ?></option>
+								<option value="terminated" <?php selected( $is_edit ? $employee->employment_status : '', 'terminated' ); ?>><?php esc_html_e( 'Terminated', 'nds-hr' ); ?></option>
+								<option value="suspended" <?php selected( $is_edit ? $employee->employment_status : '', 'suspended' ); ?>><?php esc_html_e( 'Suspended', 'nds-hr' ); ?></option>
+							</select>
+						</div>
+
+						<!-- Basic Salary Placeholder -->
+						<div class="nds-hr-field-group">
+							<label class="nds-hr-label" for="basic_salary"><?php esc_html_e( 'Basic Salary Placeholder', 'nds-hr' ); ?></label>
+							<input
+								type="number"
+								step="0.01"
+								id="basic_salary"
+								name="basic_salary"
+								value="<?php echo esc_attr( $is_edit ? $employee->basic_salary : '0.00' ); ?>"
+								class="nds-hr-input"
+							>
+						</div>
 					</div>
 				</div>
 
-				<!-- Card 3: Emergency Contacts -->
+				<!-- SECTION 4: Employment Contract -->
 				<div class="nds-hr-card nds-hr-form-section">
 					<div class="nds-hr-card-header">
-						<h2 class="nds-hr-card-title"><?php esc_html_e( 'Emergency Contacts', 'nds-hr' ); ?></h2>
+						<h2 class="nds-hr-card-title">
+							<span class="dashicons dashicons-media-document nds-hr-card-icon"></span>
+							<?php esc_html_e( '4. Employment Contract', 'nds-hr' ); ?>
+						</h2>
+					</div>
+
+					<div class="nds-hr-fields-row">
+						<!-- Contract Type -->
+						<div class="nds-hr-field-group">
+							<label class="nds-hr-label" for="contract_type"><?php esc_html_e( 'Contract Type *', 'nds-hr' ); ?></label>
+							<select id="contract_type" name="contract_type" class="nds-hr-select">
+								<option value="permanent" <?php selected( $is_edit && isset( $employee->contract_type ) ? $employee->contract_type : 'permanent', 'permanent' ); ?>><?php esc_html_e( 'Permanent', 'nds-hr' ); ?></option>
+								<option value="fixed_term" <?php selected( $is_edit && isset( $employee->contract_type ) ? $employee->contract_type : '', 'fixed_term' ); ?>><?php esc_html_e( 'Fixed Term', 'nds-hr' ); ?></option>
+								<option value="temporary" <?php selected( $is_edit && isset( $employee->contract_type ) ? $employee->contract_type : '', 'temporary' ); ?>><?php esc_html_e( 'Temporary', 'nds-hr' ); ?></option>
+								<option value="probation" <?php selected( $is_edit && isset( $employee->contract_type ) ? $employee->contract_type : '', 'probation' ); ?>><?php esc_html_e( 'Probation', 'nds-hr' ); ?></option>
+								<option value="other" <?php selected( $is_edit && isset( $employee->contract_type ) ? $employee->contract_type : '', 'other' ); ?>><?php esc_html_e( 'Other', 'nds-hr' ); ?></option>
+							</select>
+						</div>
+
+						<!-- Real-Time Duration Badge -->
+						<div class="nds-hr-field-group">
+							<label class="nds-hr-label"><?php esc_html_e( 'Contract Duration', 'nds-hr' ); ?></label>
+							<div id="nds-hr-contract-duration-display" style="padding: 9px 12px; background: #F1F5F9; border: 1px solid #CBD5E1; border-radius: 6px; font-weight: 600; color: #0F766E; font-size: 13px;">
+								<span class="dashicons dashicons-clock" style="font-size: 16px; width: 16px; height: 16px; vertical-align: middle; margin-right: 4px;"></span>
+								<span id="nds-hr-duration-text"><?php echo esc_html( $initial_duration ); ?></span>
+							</div>
+						</div>
+					</div>
+
+					<div class="nds-hr-fields-row">
+						<!-- Contract Start Date -->
+						<div class="nds-hr-field-group">
+							<label class="nds-hr-label" for="contract_start_date"><?php esc_html_e( 'Contract Start Date (DD/MM/YYYY)', 'nds-hr' ); ?></label>
+							<input
+								type="text"
+								id="contract_start_date"
+								name="contract_start_date"
+								value="<?php echo esc_attr( $formatted_contract_start ); ?>"
+								class="nds-hr-input js-contract-date js-date-field"
+								placeholder="DD/MM/YYYY"
+								pattern="(0[1-9]|[12][0-9]|3[01])[\/\-](0[1-9]|1[012])[\/\-]\d{4}"
+							>
+						</div>
+
+						<!-- Contract End Date -->
+						<div class="nds-hr-field-group">
+							<label class="nds-hr-label" for="contract_end_date">
+								<?php esc_html_e( 'Contract End Date (DD/MM/YYYY)', 'nds-hr' ); ?>
+								<small class="nds-hr-muted-text" style="font-weight: normal; margin-left: 4px;">(<?php esc_html_e( 'Leave empty for open-ended', 'nds-hr' ); ?>)</small>
+							</label>
+							<input
+								type="text"
+								id="contract_end_date"
+								name="contract_end_date"
+								value="<?php echo esc_attr( $formatted_contract_end ); ?>"
+								class="nds-hr-input js-contract-date js-date-field"
+								placeholder="DD/MM/YYYY"
+								pattern="(0[1-9]|[12][0-9]|3[01])[\/\-](0[1-9]|1[012])[\/\-]\d{4}"
+							>
+						</div>
+					</div>
+
+					<!-- Contract Document Upload -->
+					<div class="nds-hr-field-group" style="margin-top: 14px; padding-top: 14px; border-top: 1px dashed #E2E8F0;">
+						<label class="nds-hr-label" for="contract_document">
+							<?php esc_html_e( 'Contract Document (PDF, DOC, DOCX - max 10MB)', 'nds-hr' ); ?>
+						</label>
+						<input
+							type="file"
+							id="contract_document"
+							name="contract_document"
+							accept=".pdf, .doc, .docx, application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+							class="nds-hr-file-input"
+						>
+
+						<?php if ( $is_edit && ! empty( $employee->contract_document_url ) ) : ?>
+							<div class="nds-hr-current-doc-box" style="margin-top: 10px; padding: 10px 14px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; display: flex; align-items: center; justify-content: space-between;">
+								<div style="display: flex; align-items: center; gap: 8px;">
+									<span class="dashicons dashicons-media-document" style="color: #0D9488;"></span>
+									<a href="<?php echo esc_url( $employee->contract_document_url ); ?>" target="_blank" style="font-weight: 600; font-size: 13px; color: #0F766E;">
+										<?php echo esc_html( ! empty( $employee->contract_document_name ) ? $employee->contract_document_name : __( 'View Current Contract Document', 'nds-hr' ) ); ?>
+									</a>
+								</div>
+								<label class="nds-hr-checkbox-label" style="font-size: 12px; color: #DC2626; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+									<input type="checkbox" name="remove_contract_document" value="1">
+									<span><?php esc_html_e( 'Remove document', 'nds-hr' ); ?></span>
+								</label>
+							</div>
+						<?php endif; ?>
+					</div>
+				</div>
+
+				<!-- SECTION 5: Emergency Contacts -->
+				<div class="nds-hr-card nds-hr-form-section">
+					<div class="nds-hr-card-header">
+						<h2 class="nds-hr-card-title">
+							<span class="dashicons dashicons-phone nds-hr-card-icon"></span>
+							<?php esc_html_e( '5. Emergency Contact', 'nds-hr' ); ?>
+						</h2>
 					</div>
 
 					<div class="nds-hr-fields-row">
 						<div class="nds-hr-field-group">
-							<label class="nds-hr-label" for="emergency_contact_name"><?php esc_html_e( 'Emergency Contact Name', 'nds-hr' ); ?></label>
+							<label class="nds-hr-label" for="emergency_contact_name"><?php esc_html_e( 'Contact Person Name', 'nds-hr' ); ?></label>
 							<input
 								type="text"
 								id="emergency_contact_name"
 								name="emergency_contact_name"
 								value="<?php echo esc_attr( $is_edit ? $employee->emergency_contact_name : '' ); ?>"
 								class="nds-hr-input"
+								placeholder="e.g. Sara Mansoor"
 							>
 						</div>
 
 						<div class="nds-hr-field-group">
-							<label class="nds-hr-label" for="emergency_contact_phone"><?php esc_html_e( 'Contact Phone Number', 'nds-hr' ); ?></label>
+							<label class="nds-hr-label" for="emergency_contact_phone"><?php esc_html_e( 'Emergency Phone Number', 'nds-hr' ); ?></label>
 							<input
 								type="text"
 								id="emergency_contact_phone"
 								name="emergency_contact_phone"
 								value="<?php echo esc_attr( $is_edit ? $employee->emergency_contact_phone : '' ); ?>"
 								class="nds-hr-input"
+								placeholder="+20 10xxxxxxxx / +966 5xxxxxxxx"
 							>
 						</div>
 					</div>
 
 					<div class="nds-hr-field-group">
-						<label class="nds-hr-label" for="emergency_contact_relationship"><?php esc_html_e( 'Relationship (e.g., Spouse, Parent, Sibling)', 'nds-hr' ); ?></label>
+						<label class="nds-hr-label" for="emergency_contact_relationship"><?php esc_html_e( 'Relationship', 'nds-hr' ); ?></label>
 						<input
 							type="text"
 							id="emergency_contact_relationship"
 							name="emergency_contact_relationship"
 							value="<?php echo esc_attr( $is_edit ? $employee->emergency_contact_relationship : '' ); ?>"
 							class="nds-hr-input"
+							placeholder="e.g. Spouse, Parent, Sibling"
 						>
 					</div>
 				</div>
 
 			</div>
 
-			<!-- Right Sidebar: WordPress Account & Save Actions -->
+			<!-- Right Column: NDS HR Account & Save Action -->
 			<div class="nds-hr-form-sidebar">
 
-				<!-- Card: Submit Actions -->
+				<!-- Submit Card -->
 				<div class="nds-hr-card nds-hr-form-section">
 					<div class="nds-hr-card-header">
-						<h2 class="nds-hr-card-title"><?php esc_html_e( 'Publishing', 'nds-hr' ); ?></h2>
+						<h2 class="nds-hr-card-title"><?php esc_html_e( 'Actions', 'nds-hr' ); ?></h2>
 					</div>
 					<div class="nds-hr-publish-actions">
 						<button type="submit" class="nds-hr-btn nds-hr-btn-primary nds-hr-btn-block" id="nds-hr-submit-btn">
 							<span class="dashicons dashicons-saved"></span>
-							<?php echo esc_html( $is_edit ? __( 'Update Employee', 'nds-hr' ) : __( 'Save Employee', 'nds-hr' ) ); ?>
+							<?php echo esc_html( $is_edit ? __( 'Update Employee Profile', 'nds-hr' ) : __( 'Save Employee', 'nds-hr' ) ); ?>
 						</button>
-						<a href="<?php echo esc_url( admin_url( 'admin.php?page=nds-hr-employees' ) ); ?>" class="nds-hr-btn nds-hr-btn-outline nds-hr-btn-block text-center">
+						<a href="<?php echo esc_url( admin_url( 'admin.php?page=nds-hr-employees' ) ); ?>" class="nds-hr-btn nds-hr-btn-outline nds-hr-btn-block text-center" style="margin-top: 8px;">
 							<?php esc_html_e( 'Cancel', 'nds-hr' ); ?>
 						</a>
 					</div>
 				</div>
 
-				<!-- Card: WordPress User Account Integration -->
+				<!-- Independent NDS HR Account Configuration Card -->
 				<div class="nds-hr-card nds-hr-form-section">
 					<div class="nds-hr-card-header">
-						<h2 class="nds-hr-card-title"><?php esc_html_e( 'Employee Account Onboarding', 'nds-hr' ); ?></h2>
+						<h2 class="nds-hr-card-title">
+							<span class="dashicons dashicons-shield-alt nds-hr-card-icon"></span>
+							<?php esc_html_e( 'NDS HR Account & Role', 'nds-hr' ); ?>
+						</h2>
 					</div>
 
-					<?php if ( $is_edit && ! empty( $employee->user_id ) ) : 
-						$wp_user = get_user_by( 'id', $employee->user_id );
-					?>
-						<div class="nds-hr-account-linked-box">
-							<span class="dashicons dashicons-yes-alt nds-hr-icon-success"></span>
-							<div>
-								<strong><?php esc_html_e( 'Linked to WordPress User:', 'nds-hr' ); ?></strong>
-								<div><?php echo esc_html( $wp_user ? $wp_user->user_login : 'User #' . $employee->user_id ); ?></div>
-								<small class="nds-hr-muted-text"><?php echo esc_html( $wp_user ? $wp_user->user_email : '' ); ?></small>
+					<p class="nds-hr-muted-text" style="font-size: 13px; line-height: 1.4; margin-bottom: 14px;">
+						<?php esc_html_e( 'Manage independent NDS HR application credentials and role permissions. No WordPress users or wp-admin access are created.', 'nds-hr' ); ?>
+					</p>
+
+					<!-- Account Role Selection (Employee vs Admin) -->
+					<div class="nds-hr-field-group">
+						<label class="nds-hr-label" for="hr_account_role">
+							<?php esc_html_e( 'NDS HR Role *', 'nds-hr' ); ?>
+						</label>
+						<select id="hr_account_role" name="hr_account_role" class="nds-hr-select" style="font-weight: 600;">
+							<option value="hr_employee" <?php selected( $current_account_role, 'hr_employee' ); ?>><?php esc_html_e( 'Employee (Portal Access)', 'nds-hr' ); ?></option>
+							<option value="hr_admin" <?php selected( $current_account_role, 'hr_admin' ); ?>><?php esc_html_e( 'Admin (Full HR Management)', 'nds-hr' ); ?></option>
+						</select>
+						<small class="nds-hr-help-text">
+							<?php esc_html_e( 'Employee: can view self-profile/attendance. Admin: can manage all HR modules.', 'nds-hr' ); ?>
+						</small>
+					</div>
+
+					<?php if ( $is_edit && ! empty( $hr_user ) ) : ?>
+						<!-- Existing HR Account Info -->
+						<div class="nds-hr-account-linked-box" style="margin-top: 14px; background: #F0FDF4; border: 1px solid #BBF7D0; padding: 12px; border-radius: 6px;">
+							<div style="display: flex; align-items: center; gap: 8px;">
+								<span class="dashicons dashicons-yes-alt" style="color: #16A34A; font-size: 20px;"></span>
+								<div>
+									<strong><?php esc_html_e( 'NDS HR Account Active', 'nds-hr' ); ?></strong>
+									<div style="font-size: 13px; font-family: monospace; color: #166534;"><?php echo esc_html( $hr_user->username ); ?></div>
+								</div>
 							</div>
 						</div>
-						<input type="hidden" name="user_id" value="<?php echo esc_attr( $employee->user_id ); ?>">
-					<?php else : ?>
-						<p class="nds-hr-muted-text" style="font-size: 13px; line-height: 1.4; margin-bottom: 12px;">
-							<?php esc_html_e( 'Configure system access credentials so this employee can authenticate at /login/ and access the employee portal.', 'nds-hr' ); ?>
-						</p>
 
-						<!-- Account Action Options -->
-						<div class="nds-hr-radio-group" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;">
-							<label class="nds-hr-radio-label">
-								<input type="radio" name="account_action" value="none" checked class="nds-hr-radio js-account-action-toggle">
-								<span><?php esc_html_e( 'Do not create account now', 'nds-hr' ); ?></span>
-							</label>
-
-							<label class="nds-hr-radio-label">
-								<input type="radio" name="account_action" value="create" class="nds-hr-radio js-account-action-toggle">
-								<span><strong><?php esc_html_e( 'Create new WordPress login account', 'nds-hr' ); ?></strong></span>
-							</label>
-
-							<?php if ( ! empty( $wp_users ) ) : ?>
-								<label class="nds-hr-radio-label">
-									<input type="radio" name="account_action" value="link" class="nds-hr-radio js-account-action-toggle">
-									<span><?php esc_html_e( 'Link existing WordPress user', 'nds-hr' ); ?></span>
+						<!-- Reset Password for Existing HR Account -->
+						<div class="nds-hr-field-group" style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed #E2E8F0;">
+							<div style="display: flex; justify-content: space-between; align-items: center;">
+								<label class="nds-hr-label" for="account_password" style="margin-bottom: 0;">
+									<?php esc_html_e( 'Reset Password', 'nds-hr' ); ?>
 								</label>
-							<?php endif; ?>
-						</div>
-
-						<!-- Create User Subfields -->
-						<div id="nds-hr-create-user-fields" class="nds-hr-subfields" style="display: none; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 14px; border-radius: 8px; margin-top: 10px;">
-							
-							<!-- Username -->
-							<div class="nds-hr-field-group">
-								<label class="nds-hr-label" for="account_username">
-									<?php esc_html_e( 'Username *', 'nds-hr' ); ?>
-								</label>
-								<input type="text" id="account_username" name="account_username" class="nds-hr-input" placeholder="e.g. ahmed.almansoor" autocomplete="off">
-								<small class="nds-hr-help-text"><?php esc_html_e( 'Employee will use this or email to log in at /login/', 'nds-hr' ); ?></small>
-							</div>
-
-							<!-- Account Email Note -->
-							<div class="nds-hr-field-group">
-								<label class="nds-hr-label">
-									<?php esc_html_e( 'Account Email', 'nds-hr' ); ?>
-								</label>
-								<div id="nds-hr-synced-email" style="font-size: 13px; color: #475569; padding: 6px 10px; background: #FFF; border: 1px dashed #CBD5E1; border-radius: 4px;">
-									<span class="dashicons dashicons-email" style="font-size: 16px; width: 16px; height: 16px; vertical-align: middle; margin-right: 4px;"></span>
-									<span class="js-email-display"><?php esc_html_e( 'Synced with Corporate Email', 'nds-hr' ); ?></span>
-								</div>
-							</div>
-
-							<!-- Password Mode Selector: Manual vs Generated -->
-							<div class="nds-hr-field-group" style="margin-top: 12px;">
-								<label class="nds-hr-label">
-									<?php esc_html_e( 'Password Method', 'nds-hr' ); ?>
-								</label>
-								<div style="display: flex; gap: 8px; margin-bottom: 8px;">
-									<button type="button" class="nds-hr-btn nds-hr-btn-outline js-pw-mode-btn" data-mode="generate" style="flex: 1; font-size: 12px; padding: 6px 10px;">
-										<span class="dashicons dashicons-admin-network" style="font-size: 14px; width: 14px; height: 14px; vertical-align: middle;"></span>
-										<?php esc_html_e( 'Generate Secure', 'nds-hr' ); ?>
-									</button>
-									<button type="button" class="nds-hr-btn nds-hr-btn-outline js-pw-mode-btn" data-mode="manual" style="flex: 1; font-size: 12px; padding: 6px 10px;">
-										<span class="dashicons dashicons-edit" style="font-size: 14px; width: 14px; height: 14px; vertical-align: middle;"></span>
-										<?php esc_html_e( 'Enter Manually', 'nds-hr' ); ?>
-									</button>
-								</div>
-							</div>
-
-							<!-- Password Input with Show/Hide & Generate Action -->
-							<div class="nds-hr-field-group">
-								<div style="display: flex; justify-content: space-between; align-items: center;">
-									<label class="nds-hr-label" for="account_password" style="margin-bottom: 0;">
-										<?php esc_html_e( 'Password *', 'nds-hr' ); ?>
-									</label>
-									<button type="button" class="js-generate-password-btn" style="background: none; border: none; color: #0D9488; font-size: 12px; cursor: pointer; text-decoration: underline; padding: 0;">
-										<?php esc_html_e( 'Auto-Generate', 'nds-hr' ); ?>
-									</button>
-								</div>
-								
-								<div style="position: relative; display: flex; align-items: center; margin-top: 4px;">
-									<input 
-										type="password" 
-										id="account_password" 
-										name="account_password" 
-										class="nds-hr-input" 
-										style="padding-right: 70px; font-family: monospace; font-size: 13px;"
-										placeholder="<?php esc_attr_e( 'Leave blank to auto-generate', 'nds-hr' ); ?>"
-										autocomplete="new-password"
-									>
-									<button type="button" class="js-toggle-pw-visibility" style="position: absolute; right: 8px; background: none; border: none; color: #64748B; font-size: 11px; cursor: pointer; padding: 2px 6px;">
-										<span class="dashicons dashicons-visibility" style="font-size: 16px; width: 16px; height: 16px; vertical-align: middle;"></span>
-										<span class="js-pw-toggle-text"><?php esc_html_e( 'Show', 'nds-hr' ); ?></span>
-									</button>
-								</div>
-							</div>
-
-							<!-- Confirm Password -->
-							<div class="nds-hr-field-group" id="nds-hr-confirm-pw-group">
-								<label class="nds-hr-label" for="account_password_confirm">
-									<?php esc_html_e( 'Confirm Password', 'nds-hr' ); ?>
-								</label>
-								<input 
-									type="password" 
-									id="account_password_confirm" 
-									name="account_password_confirm" 
-									class="nds-hr-input"
-									style="font-family: monospace; font-size: 13px;"
-									placeholder="<?php esc_attr_e( 'Repeat password', 'nds-hr' ); ?>"
-									autocomplete="new-password"
-								>
-								<small class="nds-hr-help-text" id="nds-hr-pw-match-indicator" style="display: none;"></small>
-							</div>
-
-							<!-- Credential Quick Copy for Admin -->
-							<div id="nds-hr-live-credentials-preview" style="display: none; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 6px; padding: 10px; margin-bottom: 12px;">
-								<div style="font-size: 11px; font-weight: bold; color: #166534; text-transform: uppercase; margin-bottom: 4px;">
-									<?php esc_html_e( 'Generated Credentials Staged:', 'nds-hr' ); ?>
-								</div>
-								<div style="font-size: 12px; font-family: monospace; color: #14532D;" id="nds-hr-live-creds-text"></div>
-								<button type="button" class="nds-hr-btn nds-hr-btn-outline js-copy-staged-creds-btn" style="font-size: 11px; padding: 3px 8px; margin-top: 6px; background: #FFF;">
-									<span class="dashicons dashicons-clipboard" style="font-size: 14px; width: 14px; height: 14px; vertical-align: middle;"></span>
-									<?php esc_html_e( 'Copy Credentials', 'nds-hr' ); ?>
+								<button type="button" class="js-generate-password-btn" style="background: none; border: none; color: #0D9488; font-size: 12px; cursor: pointer; text-decoration: underline; padding: 0;">
+									<?php esc_html_e( 'Auto-Generate', 'nds-hr' ); ?>
 								</button>
 							</div>
-
-							<!-- Force Password Change on First Login -->
-							<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #E2E8F0;">
-								<label class="nds-hr-checkbox-label" style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer;">
-									<input type="checkbox" name="require_password_change" value="1" checked style="margin-top: 3px;">
-									<span style="font-size: 13px; color: #1E293B;">
-										<strong><?php esc_html_e( 'Require password change on first login', 'nds-hr' ); ?></strong>
-										<br>
-										<small style="color: #64748B;"><?php esc_html_e( 'Employee will be prompted to set a private password immediately after authenticating at /login/.', 'nds-hr' ); ?></small>
-									</span>
-								</label>
+							<div style="position: relative; display: flex; align-items: center; margin-top: 4px;">
+								<input 
+									type="password" 
+									id="account_password" 
+									name="account_password" 
+									class="nds-hr-input" 
+									style="padding-right: 70px; font-family: monospace; font-size: 13px;"
+									placeholder="<?php esc_attr_e( 'Leave blank to keep existing', 'nds-hr' ); ?>"
+									autocomplete="new-password"
+								>
+								<button type="button" class="js-toggle-pw-visibility" style="position: absolute; right: 8px; background: none; border: none; color: #64748B; font-size: 11px; cursor: pointer; padding: 2px 6px;">
+									<span class="dashicons dashicons-visibility" style="font-size: 16px; width: 16px; height: 16px; vertical-align: middle;"></span>
+									<span class="js-pw-toggle-text"><?php esc_html_e( 'Show', 'nds-hr' ); ?></span>
+								</button>
 							</div>
-
-							<!-- Email Notification -->
-							<div style="margin-top: 10px;">
-								<label class="nds-hr-checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-									<input type="checkbox" name="send_account_notification" value="1" checked>
-									<span style="font-size: 13px; color: #334155;"><?php esc_html_e( 'Send credentials to employee email', 'nds-hr' ); ?></span>
-								</label>
-							</div>
-
 						</div>
 
-						<!-- Link Existing User Subfield -->
-						<?php if ( ! empty( $wp_users ) ) : ?>
-							<div id="nds-hr-link-user-fields" class="nds-hr-subfields" style="display: none; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 14px; border-radius: 8px; margin-top: 10px;">
+						<!-- Force Password Change on Next Login -->
+						<div style="margin-top: 10px;">
+							<label class="nds-hr-checkbox-label" style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer;">
+								<input type="checkbox" name="require_password_change" value="1" <?php checked( ! empty( $hr_user->require_password_change ) ); ?> style="margin-top: 3px;">
+								<span style="font-size: 13px; color: #1E293B;">
+									<strong><?php esc_html_e( 'Require password change on next login', 'nds-hr' ); ?></strong>
+								</span>
+							</label>
+						</div>
+
+					<?php else : ?>
+
+						<!-- New Account Creation Toggle & Credentials -->
+						<div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed #E2E8F0;">
+							<label class="nds-hr-checkbox-label" style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; margin-bottom: 12px;">
+								<input type="checkbox" name="create_hr_account" id="create_hr_account" value="1" checked style="margin-top: 3px;" class="js-toggle-account-creation">
+								<span style="font-size: 13px; color: #1E293B;">
+									<strong><?php esc_html_e( 'Create NDS HR Login Account', 'nds-hr' ); ?></strong>
+									<br>
+									<small style="color: #64748B;"><?php esc_html_e( 'Allows user to log in at /login/ using email/username and password.', 'nds-hr' ); ?></small>
+								</span>
+							</label>
+
+							<div id="nds-hr-account-credential-fields" style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 14px; border-radius: 8px;">
+								
+								<!-- Username -->
 								<div class="nds-hr-field-group">
-									<label class="nds-hr-label" for="existing_wp_user_id"><?php esc_html_e( 'Select User', 'nds-hr' ); ?></label>
-									<select id="existing_wp_user_id" name="existing_wp_user_id" class="nds-hr-select">
-										<option value="0"><?php esc_html_e( '-- Choose WP User --', 'nds-hr' ); ?></option>
-										<?php foreach ( $wp_users as $u ) : ?>
-											<option value="<?php echo esc_attr( $u->ID ); ?>">
-												<?php echo esc_html( $u->display_name . ' (' . $u->user_email . ')' ); ?>
-											</option>
-										<?php endforeach; ?>
-									</select>
+									<label class="nds-hr-label" for="account_username">
+										<?php esc_html_e( 'Username', 'nds-hr' ); ?>
+									</label>
+									<input type="text" id="account_username" name="account_username" class="nds-hr-input" placeholder="e.g. ahmed.mansoor" autocomplete="off">
+									<small class="nds-hr-help-text"><?php esc_html_e( 'Auto-suggested from email.', 'nds-hr' ); ?></small>
 								</div>
+
+								<!-- Password Methods -->
+								<div class="nds-hr-field-group" style="margin-top: 10px;">
+									<div style="display: flex; justify-content: space-between; align-items: center;">
+										<label class="nds-hr-label" for="account_password" style="margin-bottom: 0;">
+											<?php esc_html_e( 'Password', 'nds-hr' ); ?>
+										</label>
+										<button type="button" class="js-generate-password-btn" style="background: none; border: none; color: #0D9488; font-size: 12px; cursor: pointer; text-decoration: underline; padding: 0;">
+											<?php esc_html_e( 'Generate Password', 'nds-hr' ); ?>
+										</button>
+									</div>
+									<div style="position: relative; display: flex; align-items: center; margin-top: 4px;">
+										<input 
+											type="password" 
+											id="account_password" 
+											name="account_password" 
+											class="nds-hr-input" 
+											style="padding-right: 70px; font-family: monospace; font-size: 13px;"
+											placeholder="<?php esc_attr_e( 'Auto-generated if left blank', 'nds-hr' ); ?>"
+											autocomplete="new-password"
+										>
+										<button type="button" class="js-toggle-pw-visibility" style="position: absolute; right: 8px; background: none; border: none; color: #64748B; font-size: 11px; cursor: pointer; padding: 2px 6px;">
+											<span class="dashicons dashicons-visibility" style="font-size: 16px; width: 16px; height: 16px; vertical-align: middle;"></span>
+											<span class="js-pw-toggle-text"><?php esc_html_e( 'Show', 'nds-hr' ); ?></span>
+										</button>
+									</div>
+								</div>
+
+								<!-- Live Credentials Preview for Admin -->
+								<div id="nds-hr-live-credentials-preview" style="display: none; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 6px; padding: 10px; margin-top: 10px;">
+									<div style="font-size: 11px; font-weight: bold; color: #166534; text-transform: uppercase; margin-bottom: 4px;">
+										<?php esc_html_e( 'Generated Credentials Staged:', 'nds-hr' ); ?>
+									</div>
+									<div style="font-size: 12px; font-family: monospace; color: #14532D;" id="nds-hr-live-creds-text"></div>
+									<button type="button" class="nds-hr-btn nds-hr-btn-outline js-copy-staged-creds-btn" style="font-size: 11px; padding: 3px 8px; margin-top: 6px; background: #FFF;">
+										<span class="dashicons dashicons-clipboard" style="font-size: 14px; width: 14px; height: 14px; vertical-align: middle;"></span>
+										<?php esc_html_e( 'Copy Credentials', 'nds-hr' ); ?>
+									</button>
+								</div>
+
+								<!-- Force Password Change -->
+								<div style="margin-top: 12px; padding-top: 8px; border-top: 1px solid #E2E8F0;">
+									<label class="nds-hr-checkbox-label" style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer;">
+										<input type="checkbox" name="require_password_change" value="1" checked style="margin-top: 3px;">
+										<span style="font-size: 12px; color: #1E293B;">
+											<strong><?php esc_html_e( 'Require password change on first login', 'nds-hr' ); ?></strong>
+										</span>
+									</label>
+								</div>
+
 							</div>
-						<?php endif; ?>
+						</div>
 
 					<?php endif; ?>
 				</div>

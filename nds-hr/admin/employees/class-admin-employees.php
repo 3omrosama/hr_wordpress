@@ -58,20 +58,80 @@ class NDS_HR_Admin_Employees {
 			$employee_db_id = isset( $_POST['employee_db_id'] ) ? absint( $_POST['employee_db_id'] ) : 0;
 			$clean_data     = NDS_HR_Security::sanitize_employee_input( $_POST );
 
-			// Handle account options
+			// Check validation errors on phone
+			if ( ! empty( $clean_data['_phone_error'] ) && is_wp_error( $clean_data['_phone_error'] ) ) {
+				$err_msg = $clean_data['_phone_error']->get_error_message();
+				$redirect_url = $employee_db_id > 0
+					? add_query_arg( array( 'page' => 'nds-hr-employees', 'action' => 'edit', 'id' => $employee_db_id, 'error' => urlencode( $err_msg ) ), admin_url( 'admin.php' ) )
+					: add_query_arg( array( 'page' => 'nds-hr-employees', 'action' => 'add', 'error' => urlencode( $err_msg ) ), admin_url( 'admin.php' ) );
+				wp_safe_redirect( $redirect_url );
+				exit;
+			}
+
+			$existing_emp = $employee_db_id > 0 ? $repo->find_by_id( $employee_db_id ) : null;
+
+			// Handle Profile Photo Upload
+			if ( ! empty( $clean_data['remove_profile_photo'] ) ) {
+				$clean_data['profile_photo_url'] = '';
+			} elseif ( isset( $_FILES['profile_photo'] ) && ! empty( $_FILES['profile_photo']['name'] ) ) {
+				$photo_upload = NDS_HR_Security::handle_profile_photo_upload(
+					$_FILES['profile_photo'],
+					$existing_emp ? (string) $existing_emp->profile_photo_url : ''
+				);
+
+				if ( is_wp_error( $photo_upload ) ) {
+					$redirect_url = $employee_db_id > 0
+						? add_query_arg( array( 'page' => 'nds-hr-employees', 'action' => 'edit', 'id' => $employee_db_id, 'error' => urlencode( $photo_upload->get_error_message() ) ), admin_url( 'admin.php' ) )
+						: add_query_arg( array( 'page' => 'nds-hr-employees', 'action' => 'add', 'error' => urlencode( $photo_upload->get_error_message() ) ), admin_url( 'admin.php' ) );
+					wp_safe_redirect( $redirect_url );
+					exit;
+				}
+
+				$clean_data['profile_photo_url'] = $photo_upload;
+			} elseif ( $existing_emp && empty( $clean_data['profile_photo_url'] ) ) {
+				$clean_data['profile_photo_url'] = $existing_emp->profile_photo_url;
+			}
+
+			// Handle Contract Document Upload
+			if ( ! empty( $clean_data['remove_contract_document'] ) ) {
+				$clean_data['contract_document_url']  = '';
+				$clean_data['contract_document_name'] = '';
+			} elseif ( isset( $_FILES['contract_document'] ) && ! empty( $_FILES['contract_document']['name'] ) ) {
+				$doc_upload = NDS_HR_Security::handle_contract_document_upload(
+					$_FILES['contract_document'],
+					$existing_emp && isset( $existing_emp->contract_document_url ) ? (string) $existing_emp->contract_document_url : '',
+					$existing_emp && isset( $existing_emp->contract_document_name ) ? (string) $existing_emp->contract_document_name : ''
+				);
+
+				if ( is_wp_error( $doc_upload ) ) {
+					$redirect_url = $employee_db_id > 0
+						? add_query_arg( array( 'page' => 'nds-hr-employees', 'action' => 'edit', 'id' => $employee_db_id, 'error' => urlencode( $doc_upload->get_error_message() ) ), admin_url( 'admin.php' ) )
+						: add_query_arg( array( 'page' => 'nds-hr-employees', 'action' => 'add', 'error' => urlencode( $doc_upload->get_error_message() ) ), admin_url( 'admin.php' ) );
+					wp_safe_redirect( $redirect_url );
+					exit;
+				}
+
+				$clean_data['contract_document_url']  = $doc_upload['url'];
+				$clean_data['contract_document_name'] = $doc_upload['name'];
+			} elseif ( $existing_emp && isset( $existing_emp->contract_document_url ) ) {
+				$clean_data['contract_document_url']  = $existing_emp->contract_document_url;
+				$clean_data['contract_document_name'] = isset( $existing_emp->contract_document_name ) ? $existing_emp->contract_document_name : '';
+			}
+
+			// Handle independent NDS HR account options
 			$account_options = array(
-				'action'                  => isset( $_POST['account_action'] ) ? sanitize_key( $_POST['account_action'] ) : 'none',
+				'create_account'          => ! empty( $_POST['create_hr_account'] ) || ( isset( $_POST['account_action'] ) && 'create' === $_POST['account_action'] ),
+				'role'                    => ! empty( $_POST['hr_account_role'] ) ? sanitize_key( $_POST['hr_account_role'] ) : ( ! empty( $_POST['account_role'] ) ? sanitize_key( $_POST['account_role'] ) : 'hr_employee' ),
 				'username'                => isset( $_POST['account_username'] ) ? sanitize_user( wp_unslash( $_POST['account_username'] ) ) : '',
 				'password'                => isset( $_POST['account_password'] ) ? wp_unslash( $_POST['account_password'] ) : '', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 				'confirm_password'        => isset( $_POST['account_password_confirm'] ) ? wp_unslash( $_POST['account_password_confirm'] ) : '', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 				'require_password_change' => ! empty( $_POST['require_password_change'] ),
-				'existing_user_id'        => isset( $_POST['existing_wp_user_id'] ) ? absint( $_POST['existing_wp_user_id'] ) : 0,
 				'send_notification'       => ! empty( $_POST['send_account_notification'] ),
 			);
 
 			if ( $employee_db_id > 0 ) {
 				// Update existing
-				$result = $service->update_employee( $employee_db_id, $clean_data );
+				$result = $service->update_employee( $employee_db_id, $clean_data, $account_options );
 				if ( is_wp_error( $result ) ) {
 					wp_safe_redirect(
 						add_query_arg(
@@ -217,13 +277,6 @@ class NDS_HR_Admin_Employees {
 
 			$departments = $repo->get_departments();
 			$positions   = $repo->get_positions();
-			$wp_users    = get_users(
-				array(
-					'fields'  => array( 'ID', 'user_login', 'display_name', 'user_email' ),
-					'number'  => 100,
-					'orderby' => 'display_name',
-				)
-			);
 
 			// Generate next suggested employee code via service layer
 			$next_code = $service->generate_employee_id();
@@ -247,13 +300,25 @@ class NDS_HR_Admin_Employees {
 
 			$departments = $repo->get_departments();
 			$positions   = $repo->get_positions();
-			$wp_users    = get_users(
-				array(
-					'fields'  => array( 'ID', 'user_login', 'display_name', 'user_email' ),
-					'number'  => 100,
-					'orderby' => 'display_name',
-				)
-			);
+
+			// Fetch linked independent NDS HR user record
+			global $wpdb;
+			$users_table = NDS_HR_Database::users_table();
+			$roles_table = NDS_HR_Database::roles_table();
+			$target_user_id = ! empty( $employee->hr_user_id ) ? (int) $employee->hr_user_id : ( ! empty( $employee->user_id ) ? (int) $employee->user_id : 0 );
+			
+			$hr_user = null;
+			if ( $target_user_id > 0 ) {
+				$hr_user = $wpdb->get_row(
+					$wpdb->prepare(
+						"SELECT u.*, r.slug AS role_slug, r.name AS role_name 
+						 FROM {$users_table} u 
+						 LEFT JOIN {$roles_table} r ON u.role_id = r.id 
+						 WHERE u.id = %d LIMIT 1",
+						$target_user_id
+					)
+				);
+			}
 
 			include NDS_HR_PATH . 'templates/admin/employee-form.php';
 			return;
@@ -267,6 +332,27 @@ class NDS_HR_Admin_Employees {
 			if ( ! $employee ) {
 				wp_die( esc_html__( 'Employee not found.', 'nds-hr' ) );
 			}
+
+			// Fetch linked independent NDS HR user record
+			global $wpdb;
+			$users_table = NDS_HR_Database::users_table();
+			$roles_table = NDS_HR_Database::roles_table();
+			$target_user_id = ! empty( $employee->hr_user_id ) ? (int) $employee->hr_user_id : ( ! empty( $employee->user_id ) ? (int) $employee->user_id : 0 );
+			
+			$hr_user = null;
+			if ( $target_user_id > 0 ) {
+				$hr_user = $wpdb->get_row(
+					$wpdb->prepare(
+						"SELECT u.*, r.slug AS role_slug, r.name AS role_name 
+						 FROM {$users_table} u 
+						 LEFT JOIN {$roles_table} r ON u.role_id = r.id 
+						 WHERE u.id = %d LIMIT 1",
+						$target_user_id
+					)
+				);
+			}
+
+			$employee_logs = NDS_HR_Audit_Logger::get_logs( array( 'entity_type' => 'employee', 'entity_id' => $id, 'per_page' => 15 ) );
 
 			include NDS_HR_PATH . 'templates/admin/employee-view.php';
 			return;

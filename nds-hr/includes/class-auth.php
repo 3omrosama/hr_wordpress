@@ -879,6 +879,86 @@ class NDS_HR_Auth {
 	}
 
 	/**
+	 * Update an existing independent NDS HR application user account.
+	 *
+	 * @param int   $hr_user_id
+	 * @param array $account_data
+	 * @return true|WP_Error
+	 */
+	public static function update_employee_user_account( $hr_user_id, array $account_data ) {
+		global $wpdb;
+
+		$users_table = NDS_HR_Database::users_table();
+		$roles_table = NDS_HR_Database::roles_table();
+
+		$user = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$users_table} WHERE id = %d LIMIT 1", absint( $hr_user_id ) ) );
+		if ( ! $user ) {
+			return new WP_Error( 'user_not_found', __( 'NDS HR User account not found.', 'nds-hr' ) );
+		}
+
+		$update_fields = array();
+		$update_format = array();
+
+		// Role update (hr_employee or hr_admin)
+		if ( ! empty( $account_data['role'] ) ) {
+			$role_slug = sanitize_key( $account_data['role'] );
+			$role_id   = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$roles_table} WHERE slug = %s LIMIT 1", $role_slug ) );
+			if ( $role_id ) {
+				$update_fields['role_id'] = (int) $role_id;
+				$update_format[]          = '%d';
+			}
+		}
+
+		// Email update with uniqueness check
+		if ( ! empty( $account_data['email'] ) && is_email( $account_data['email'] ) && $account_data['email'] !== $user->email ) {
+			$email_exists = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$users_table} WHERE email = %s AND id != %d LIMIT 1", $account_data['email'], $user->id ) );
+			if ( $email_exists ) {
+				return new WP_Error( 'email_exists', __( 'This email address is already in use by another NDS HR user.', 'nds-hr' ) );
+			}
+			$update_fields['email'] = sanitize_email( $account_data['email'] );
+			$update_format[]        = '%s';
+		}
+
+		// Password update if provided
+		if ( ! empty( $account_data['password'] ) ) {
+			$update_fields['password_hash'] = wp_hash_password( $account_data['password'] );
+			$update_format[]                = '%s';
+		}
+
+		if ( isset( $account_data['require_password_change'] ) ) {
+			$update_fields['require_password_change'] = ! empty( $account_data['require_password_change'] ) ? 1 : 0;
+			$update_format[]                          = '%d';
+		}
+
+		if ( ! empty( $account_data['first_name'] ) ) {
+			$update_fields['first_name'] = sanitize_text_field( $account_data['first_name'] );
+			$update_format[]             = '%s';
+		}
+
+		if ( ! empty( $account_data['last_name'] ) ) {
+			$update_fields['last_name'] = sanitize_text_field( $account_data['last_name'] );
+			$update_format[]            = '%s';
+		}
+
+		if ( ! empty( $account_data['full_name'] ) ) {
+			$update_fields['display_name'] = sanitize_text_field( $account_data['full_name'] );
+			$update_format[]               = '%s';
+		}
+
+		if ( ! empty( $update_fields ) ) {
+			$wpdb->update(
+				$users_table,
+				$update_fields,
+				array( 'id' => absint( $hr_user_id ) ),
+				$update_format,
+				array( '%d' )
+			);
+		}
+
+		return true;
+	}
+
+	/**
 	 * Link an NDS HR User to an Employee record in wp_nds_hr_employees.
 	 *
 	 * @param int $hr_user_id

@@ -111,6 +111,43 @@ class NDS_HR_Database {
 			self::seed_auth_defaults();
 			self::upgrade_employees_table_non_destructively();
 		}
+
+		// Phase 2.1 Employee Form Refinements & Contract Schema (v2.1.0)
+		if ( version_compare( $from_version, '2.1.0', '<' ) ) {
+			self::upgrade_employees_table_v2_1();
+		}
+	}
+
+	/**
+	 * Non-destructively add contract columns and phone_country_code to employees table.
+	 */
+	protected static function upgrade_employees_table_v2_1() {
+		global $wpdb;
+
+		$employees_table = self::employees_table();
+
+		$columns_to_add = array(
+			'contract_type'          => "varchar(50) NOT NULL DEFAULT 'permanent' AFTER `employment_status`",
+			'contract_start_date'    => "date DEFAULT NULL AFTER `contract_type`",
+			'contract_end_date'      => "date DEFAULT NULL AFTER `contract_start_date`",
+			'contract_document_url'  => "text DEFAULT NULL AFTER `contract_end_date`",
+			'contract_document_name' => "varchar(255) DEFAULT '' AFTER `contract_document_url`",
+			'phone_country_code'     => "varchar(10) DEFAULT '+20' AFTER `phone`",
+		);
+
+		foreach ( $columns_to_add as $column_name => $definition ) {
+			$column_exists = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s",
+					$employees_table,
+					$column_name
+				)
+			);
+
+			if ( empty( $column_exists ) ) {
+				$wpdb->query( "ALTER TABLE `{$employees_table}` ADD COLUMN `{$column_name}` {$definition}" );
+			}
+		}
 	}
 
 	/**
@@ -451,11 +488,13 @@ class NDS_HR_Database {
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			employee_id varchar(50) NOT NULL,
 			user_id bigint(20) unsigned DEFAULT NULL,
+			hr_user_id bigint(20) unsigned DEFAULT NULL,
 			first_name varchar(100) NOT NULL,
 			last_name varchar(100) NOT NULL,
 			full_name varchar(200) NOT NULL,
 			email varchar(100) NOT NULL,
 			phone varchar(50) DEFAULT '',
+			phone_country_code varchar(10) DEFAULT '+20',
 			mobile varchar(50) DEFAULT '',
 			national_id varchar(50) DEFAULT '',
 			date_of_birth date DEFAULT NULL,
@@ -464,6 +503,11 @@ class NDS_HR_Database {
 			department_id bigint(20) unsigned DEFAULT NULL,
 			position_id bigint(20) unsigned DEFAULT NULL,
 			employment_status varchar(30) NOT NULL DEFAULT 'active',
+			contract_type varchar(50) NOT NULL DEFAULT 'permanent',
+			contract_start_date date DEFAULT NULL,
+			contract_end_date date DEFAULT NULL,
+			contract_document_url text DEFAULT NULL,
+			contract_document_name varchar(255) DEFAULT '',
 			manager_id bigint(20) unsigned DEFAULT NULL,
 			basic_salary decimal(12,2) NOT NULL DEFAULT 0.00,
 			profile_photo_url text DEFAULT NULL,
@@ -476,6 +520,7 @@ class NDS_HR_Database {
 			PRIMARY KEY  (id),
 			UNIQUE KEY employee_id (employee_id),
 			KEY user_id (user_id),
+			KEY hr_user_id (hr_user_id),
 			KEY department_id (department_id),
 			KEY position_id (position_id),
 			KEY status (employment_status),

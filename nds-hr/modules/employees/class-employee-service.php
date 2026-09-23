@@ -31,14 +31,20 @@ class NDS_HR_Employee_Service {
 	}
 
 	/**
-	 * Create a new employee with business rule validations and optional account creation.
+	 * Create a new employee with business rule validations and optional NDS HR account creation.
 	 *
 	 * @param array $data Sanitized employee data.
-	 * @param array $account_options Options for WP User association.
+	 * @param array $account_options Options for NDS HR User association.
 	 * @return int|array|WP_Error Employee DB ID or array with account details on success, or WP_Error.
 	 */
 	public function create_employee( array $data, array $account_options = array() ) {
 		global $wpdb;
+
+		// Validation of phone format errors if present
+		if ( ! empty( $data['_phone_error'] ) && is_wp_error( $data['_phone_error'] ) ) {
+			return $data['_phone_error'];
+		}
+		unset( $data['_phone_error'], $data['remove_profile_photo'], $data['remove_contract_document'], $data['display_name'] );
 
 		// Validation of required fields
 		if ( empty( $data['first_name'] ) || empty( $data['last_name'] ) ) {
@@ -58,76 +64,59 @@ class NDS_HR_Employee_Service {
 			return new WP_Error( 'duplicate_email', __( 'An employee with this email address already exists.', 'nds-hr' ) );
 		}
 
-		// Handle WordPress User account integration
+		// Handle Independent NDS HR User account integration
 		$linked_user_id     = 0;
 		$account_info_badge = null;
 
-		if ( ! empty( $account_options['action'] ) ) {
-			if ( 'create' === $account_options['action'] ) {
-				// Validate passwords match if manually provided
-				$pw         = $account_options['password'] ?? '';
-				$confirm_pw = $account_options['confirm_password'] ?? '';
-				if ( ! empty( $pw ) && ! empty( $confirm_pw ) && $pw !== $confirm_pw ) {
-					return new WP_Error( 'password_mismatch', __( 'The entered passwords do not match.', 'nds-hr' ) );
-				}
+		$should_create_account = ! empty( $account_options['create_account'] ) || ( isset( $account_options['action'] ) && 'create' === $account_options['action'] );
 
-				// Create new WP user (native password hashing, never logged or saved to HR DB)
-				$user_result = NDS_HR_Auth::create_employee_user_account(
-					array(
-						'username'                => $account_options['username'] ?? '',
-						'email'                   => $data['email'],
-						'password'                => $pw,
-						'require_password_change' => ! empty( $account_options['require_password_change'] ),
-						'first_name'              => $data['first_name'],
-						'last_name'               => $data['last_name'],
-						'full_name'               => $data['full_name'],
-						'send_notification'       => ! empty( $account_options['send_notification'] ),
-					)
-				);
-
-				if ( is_wp_error( $user_result ) ) {
-					return $user_result;
-				}
-
-				$linked_user_id     = $user_result['user_id'];
-				$account_info_badge = $user_result; // Contains temporary plain password for one-time HR display
-
-				// Audit logging: ONLY record user ID, username, email, and require_pw flag. NEVER record the password.
-				NDS_HR_Audit_Logger::log(
-					'user_account_created',
-					'user',
-					$linked_user_id,
-					array(),
-					array(
-						'username'                => $user_result['username'],
-						'email'                   => $data['email'],
-						'require_password_change' => ! empty( $account_options['require_password_change'] ),
-					)
-				);
-			} elseif ( 'link' === $account_options['action'] && ! empty( $account_options['existing_user_id'] ) ) {
-				$existing_user_id = absint( $account_options['existing_user_id'] );
-				$user = get_user_by( 'id', $existing_user_id );
-
-				if ( ! $user ) {
-					return new WP_Error( 'invalid_user', __( 'The selected WordPress user does not exist.', 'nds-hr' ) );
-				}
-
-				// Check if user is already linked to another employee
-				$already_linked = $this->repository->find_by_user_id( $existing_user_id );
-				if ( $already_linked ) {
-					return new WP_Error( 'user_already_linked', __( 'This WordPress user is already linked to employee ' . $already_linked->employee_id, 'nds-hr' ) );
-				}
-
-				$linked_user_id = $existing_user_id;
-
-				NDS_HR_Audit_Logger::log(
-					'user_account_linked',
-					'user',
-					$linked_user_id,
-					array(),
-					array( 'user_id' => $linked_user_id )
-				);
+		if ( $should_create_account ) {
+			// Validate passwords match if manually provided
+			$pw         = $account_options['password'] ?? '';
+			$confirm_pw = $account_options['confirm_password'] ?? '';
+			if ( ! empty( $pw ) && ! empty( $confirm_pw ) && $pw !== $confirm_pw ) {
+				return new WP_Error( 'password_mismatch', __( 'The entered passwords do not match.', 'nds-hr' ) );
 			}
+
+			$role_slug = ! empty( $account_options['role'] ) && in_array( $account_options['role'], array( 'hr_employee', 'hr_admin' ), true )
+				? $account_options['role']
+				: 'hr_employee';
+
+			// Create independent NDS HR user
+			$user_result = NDS_HR_Auth::create_employee_user_account(
+				array(
+					'username'                => ! empty( $account_options['username'] ) ? $account_options['username'] : sanitize_user( explode( '@', $data['email'] )[0] ),
+					'email'                   => $data['email'],
+					'password'                => $pw,
+					'role'                    => $role_slug,
+					'require_password_change' => ! empty( $account_options['require_password_change'] ),
+					'first_name'              => $data['first_name'],
+					'last_name'               => $data['last_name'],
+					'full_name'               => $data['full_name'],
+					'send_notification'       => ! empty( $account_options['send_notification'] ),
+				)
+			);
+
+			if ( is_wp_error( $user_result ) ) {
+				return $user_result;
+			}
+
+			$linked_user_id     = $user_result['user_id'];
+			$account_info_badge = $user_result;
+
+			// Audit logging: NEVER record passwords
+			NDS_HR_Audit_Logger::log(
+				'user_account_created',
+				'user',
+				$linked_user_id,
+				array(),
+				array(
+					'username'                => $user_result['username'],
+					'email'                   => $data['email'],
+					'role'                    => $role_slug,
+					'require_password_change' => ! empty( $account_options['require_password_change'] ),
+				)
+			);
 		}
 
 		if ( $linked_user_id > 0 ) {
@@ -154,11 +143,12 @@ class NDS_HR_Employee_Service {
 			$employee_id,
 			array(),
 			array(
-				'employee_id' => $data['employee_id'] ?? '',
-				'full_name'   => $data['full_name'],
-				'email'       => $data['email'],
-				'department'  => $data['department_id'],
-				'status'      => $data['employment_status'],
+				'employee_id'   => $data['employee_id'] ?? '',
+				'full_name'     => $data['full_name'],
+				'email'         => $data['email'],
+				'department'    => $data['department_id'],
+				'status'        => $data['employment_status'],
+				'contract_type' => $data['contract_type'] ?? 'permanent',
 			)
 		);
 
@@ -180,10 +170,17 @@ class NDS_HR_Employee_Service {
 	 *
 	 * @param int   $id Employee DB primary ID.
 	 * @param array $data Sanitized employee data.
+	 * @param array $account_options Optional account updates.
 	 * @return true|WP_Error
 	 */
-	public function update_employee( $id, array $data ) {
+	public function update_employee( $id, array $data, array $account_options = array() ) {
 		global $wpdb;
+
+		// Validation of phone format errors if present
+		if ( ! empty( $data['_phone_error'] ) && is_wp_error( $data['_phone_error'] ) ) {
+			return $data['_phone_error'];
+		}
+		unset( $data['_phone_error'], $data['remove_profile_photo'], $data['remove_contract_document'], $data['display_name'] );
 
 		$existing = $this->repository->find_by_id( $id );
 		if ( ! $existing ) {
@@ -197,6 +194,63 @@ class NDS_HR_Employee_Service {
 		);
 		if ( $duplicate ) {
 			return new WP_Error( 'duplicate_email', __( 'Another employee already uses this email address.', 'nds-hr' ) );
+		}
+
+		// Handle Account updates if employee has linked HR user
+		$target_hr_user_id = ! empty( $existing->hr_user_id ) ? (int) $existing->hr_user_id : ( ! empty( $existing->user_id ) ? (int) $existing->user_id : 0 );
+
+		if ( $target_hr_user_id > 0 && ! empty( $account_options ) ) {
+			$account_update_payload = array(
+				'email'      => $data['email'],
+				'first_name' => $data['first_name'],
+				'last_name'  => $data['last_name'],
+				'full_name'  => $data['full_name'],
+			);
+
+			if ( ! empty( $account_options['role'] ) ) {
+				$account_update_payload['role'] = in_array( $account_options['role'], array( 'hr_employee', 'hr_admin' ), true ) ? $account_options['role'] : 'hr_employee';
+			}
+
+			if ( ! empty( $account_options['password'] ) ) {
+				if ( ! empty( $account_options['confirm_password'] ) && $account_options['password'] !== $account_options['confirm_password'] ) {
+					return new WP_Error( 'password_mismatch', __( 'The entered passwords do not match.', 'nds-hr' ) );
+				}
+				$account_update_payload['password'] = $account_options['password'];
+			}
+
+			if ( isset( $account_options['require_password_change'] ) ) {
+				$account_update_payload['require_password_change'] = ! empty( $account_options['require_password_change'] ) ? 1 : 0;
+			}
+
+			$user_update_res = NDS_HR_Auth::update_employee_user_account( $target_hr_user_id, $account_update_payload );
+			if ( is_wp_error( $user_update_res ) ) {
+				return $user_update_res;
+			}
+		} elseif ( 0 === $target_hr_user_id && ! empty( $account_options['create_account'] ) ) {
+			// Account creation for existing employee
+			$role_slug = ! empty( $account_options['role'] ) && in_array( $account_options['role'], array( 'hr_employee', 'hr_admin' ), true ) ? $account_options['role'] : 'hr_employee';
+			$pw        = $account_options['password'] ?? '';
+
+			$user_result = NDS_HR_Auth::create_employee_user_account(
+				array(
+					'username'                => ! empty( $account_options['username'] ) ? $account_options['username'] : sanitize_user( explode( '@', $data['email'] )[0] ),
+					'email'                   => $data['email'],
+					'password'                => $pw,
+					'role'                    => $role_slug,
+					'require_password_change' => ! empty( $account_options['require_password_change'] ),
+					'first_name'              => $data['first_name'],
+					'last_name'               => $data['last_name'],
+					'full_name'               => $data['full_name'],
+				)
+			);
+
+			if ( is_wp_error( $user_result ) ) {
+				return $user_result;
+			}
+
+			$data['hr_user_id'] = $user_result['user_id'];
+			$data['user_id']    = $user_result['user_id'];
+			NDS_HR_Auth::link_user_to_employee( $user_result['user_id'], $id );
 		}
 
 		$old_values = (array) $existing;
