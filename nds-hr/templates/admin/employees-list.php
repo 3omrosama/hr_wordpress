@@ -27,7 +27,7 @@ $error   = isset( $_GET['error'] ) ? sanitize_text_field( wp_unslash( $_GET['err
 			</div>
 			<div class="nds-hr-header-actions">
 				<?php if ( NDS_HR_Permissions::can_manage_employees() ) : ?>
-					<a href="<?php echo esc_url( NDS_HR_Router::url( 'admin', array( 'tab' => 'employees', 'action' => 'add' ) ) ); ?>" class="nds-hr-btn nds-hr-btn-primary">
+					<a href="<?php echo esc_url( NDS_HR_Router::url( 'admin', array( 'tab' => 'employees', 'action' => 'add' ) ) ); ?>" class="nds-hr-btn nds-hr-btn-primary nds-hr-header-action-btn">
 						<span class="dashicons dashicons-plus"></span>
 						<?php esc_html_e( 'Add Employee', 'nds-hr' ); ?>
 					</a>

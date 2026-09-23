@@ -33,13 +33,13 @@ $dir    = NDS_HR_I18n::get_direction();
 				</div>
 
 				<?php if ( NDS_HR_Permissions::can_manage_employees() ) : ?>
-					<a href="<?php echo esc_url( NDS_HR_Router::url( 'admin', array( 'tab' => 'employees', 'action' => 'add' ) ) ); ?>" class="nds-hr-btn nds-hr-btn-primary">
+					<a href="<?php echo esc_url( NDS_HR_Router::url( 'admin', array( 'tab' => 'employees', 'action' => 'add' ) ) ); ?>" class="nds-hr-btn nds-hr-btn-primary nds-hr-header-action-btn">
 						<span class="dashicons dashicons-plus"></span>
 						<?php esc_html_e( 'Add Employee', 'nds-hr' ); ?>
 					</a>
 				<?php endif; ?>
 
-				<a href="<?php echo esc_url( NDS_HR_Router::url( 'employee' ) ); ?>" target="_blank" class="nds-hr-btn nds-hr-btn-outline">
+				<a href="<?php echo esc_url( NDS_HR_Router::url( 'employee' ) ); ?>" target="_blank" class="nds-hr-btn nds-hr-btn-outline nds-hr-header-action-btn">
 					<span class="dashicons dashicons-external"></span>
 					<?php esc_html_e( 'Employee Portal', 'nds-hr' ); ?>
 				</a>

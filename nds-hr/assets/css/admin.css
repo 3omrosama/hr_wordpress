@@ -100,8 +100,39 @@
 .nds-hr-header-actions {
 	display: flex;
 	align-items: center;
-	gap: 12px;
+	gap: 10px;
 	flex-wrap: wrap;
+	flex: 0 0 auto;
+	width: auto;
+}
+
+.nds-hr-header-actions .nds-hr-btn,
+.nds-hr-header-action-btn {
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	width: auto !important;
+	min-width: 0 !important;
+	max-width: max-content !important;
+	flex: 0 0 auto !important;
+	flex-grow: 0 !important;
+	gap: 6px !important;
+	padding: 6px 12px !important;
+	font-size: 13px !important;
+	font-weight: 600 !important;
+	line-height: 1.4 !important;
+	white-space: nowrap !important;
+	box-sizing: border-box !important;
+}
+
+.nds-hr-header-actions .nds-hr-btn .dashicons,
+.nds-hr-header-action-btn .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	line-height: 16px;
+	margin: 0;
+	flex-shrink: 0;
 }
 
 /* Language switcher */
