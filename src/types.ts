@@ -79,3 +79,28 @@ export interface CreatedCredentialsInfo {
   temporaryPassword: string;
   requirePasswordChange: boolean;
 }
+
+export interface CustomField {
+  id: number;
+  entity: string;
+  field_key: string;
+  field_label: string;
+  field_type: 'text' | 'textarea' | 'number' | 'email' | 'phone' | 'date' | 'select' | 'multiselect' | 'checkbox' | 'radio' | 'yes_no';
+  description?: string | null;
+  is_required: boolean;
+  is_active: boolean;
+  sort_order: number;
+  settings?: Record<string, any> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomFieldValue {
+  id: number;
+  field_id: number;
+  entity_id: number;
+  value: any;
+  created_at: string;
+  updated_at: string;
+}
+

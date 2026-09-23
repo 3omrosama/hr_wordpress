@@ -76,6 +76,22 @@ class NDS_HR_Admin_Settings {
 				$this->process_save_localization_settings();
 				break;
 
+			case 'create_custom_field':
+				$this->process_create_custom_field();
+				break;
+
+			case 'update_custom_field':
+				$this->process_update_custom_field();
+				break;
+
+			case 'toggle_custom_field_status':
+				$this->process_toggle_custom_field_status();
+				break;
+
+			case 'delete_custom_field':
+				$this->process_delete_custom_field();
+				break;
+
 			default:
 				break;
 		}
@@ -166,6 +182,295 @@ class NDS_HR_Admin_Settings {
 	}
 
 	/**
+	 * Process Custom Field Creation for Employee entity.
+	 */
+	protected function process_create_custom_field() {
+		$entity      = 'employee';
+		$field_label = isset( $_POST['field_label'] ) ? sanitize_text_field( wp_unslash( $_POST['field_label'] ) ) : '';
+		$field_key   = isset( $_POST['field_key'] ) ? strtolower( sanitize_key( wp_unslash( $_POST['field_key'] ) ) ) : '';
+		$field_type  = isset( $_POST['field_type'] ) ? sanitize_key( wp_unslash( $_POST['field_type'] ) ) : 'text';
+		$description = isset( $_POST['description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['description'] ) ) : '';
+		$is_required = ! empty( $_POST['is_required'] ) ? 1 : 0;
+		$is_active   = isset( $_POST['is_active'] ) ? ( ! empty( $_POST['is_active'] ) ? 1 : 0 ) : 1;
+		$sort_order  = isset( $_POST['sort_order'] ) ? (int) $_POST['sort_order'] : 10;
+
+		// Parse dynamic options if select/multiselect/checkbox/radio
+		$settings = array();
+		if ( in_array( $field_type, array( 'select', 'multiselect', 'checkbox', 'radio' ), true ) ) {
+			$settings['options'] = $this->parse_dynamic_options_from_post();
+		}
+
+		$data = array(
+			'entity'      => $entity,
+			'field_key'   => $field_key,
+			'field_label' => $field_label,
+			'field_type'  => $field_type,
+			'description' => $description,
+			'is_required' => $is_required,
+			'is_active'   => $is_active,
+			'sort_order'  => $sort_order,
+			'settings'    => $settings,
+		);
+
+		$result = NDS_HR_Custom_Fields::create_field( $data );
+
+		if ( is_wp_error( $result ) ) {
+			$redirect_url = NDS_HR_Router::url(
+				'settings',
+				array(
+					'section'   => 'employees',
+					'cf_error'  => rawurlencode( $result->get_error_message() ),
+				)
+			);
+			wp_safe_redirect( $redirect_url );
+			exit;
+		}
+
+		$field_id    = (int) $result;
+		$current_uid = NDS_HR_Session::get_current_user_id();
+
+		NDS_HR_Audit_Logger::log(
+			'custom_field_created',
+			'custom_fields',
+			$field_id,
+			array(),
+			array(
+				'entity'      => $entity,
+				'field_key'   => $field_key,
+				'field_label' => $field_label,
+				'field_type'  => $field_type,
+				'is_required' => $is_required,
+				'is_active'   => $is_active,
+				'sort_order'  => $sort_order,
+			),
+			$current_uid
+		);
+
+		$redirect_url = NDS_HR_Router::url(
+			'settings',
+			array(
+				'section'   => 'employees',
+				'cf_notice' => 'created',
+			)
+		);
+		wp_safe_redirect( $redirect_url );
+		exit;
+	}
+
+	/**
+	 * Process Custom Field Update.
+	 */
+	protected function process_update_custom_field() {
+		$field_id = isset( $_POST['field_id'] ) ? absint( $_POST['field_id'] ) : 0;
+		if ( ! $field_id ) {
+			wp_die( esc_html__( 'Invalid field ID.', 'nds-hr' ), '', array( 'response' => 400 ) );
+		}
+
+		$existing = NDS_HR_Custom_Fields::get_field( $field_id );
+		if ( ! $existing ) {
+			wp_die( esc_html__( 'Custom field not found.', 'nds-hr' ), '', array( 'response' => 404 ) );
+		}
+
+		$field_label = isset( $_POST['field_label'] ) ? sanitize_text_field( wp_unslash( $_POST['field_label'] ) ) : $existing->field_label;
+		$field_key   = isset( $_POST['field_key'] ) ? strtolower( sanitize_key( wp_unslash( $_POST['field_key'] ) ) ) : $existing->field_key;
+		$field_type  = isset( $_POST['field_type'] ) ? sanitize_key( wp_unslash( $_POST['field_type'] ) ) : $existing->field_type;
+		$description = isset( $_POST['description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['description'] ) ) : '';
+		$is_required = ! empty( $_POST['is_required'] ) ? 1 : 0;
+		$is_active   = isset( $_POST['is_active'] ) ? ( ! empty( $_POST['is_active'] ) ? 1 : 0 ) : 0;
+		$sort_order  = isset( $_POST['sort_order'] ) ? (int) $_POST['sort_order'] : $existing->sort_order;
+
+		$settings = is_array( $existing->settings ) ? $existing->settings : array();
+		if ( in_array( $field_type, array( 'select', 'multiselect', 'checkbox', 'radio' ), true ) ) {
+			$settings['options'] = $this->parse_dynamic_options_from_post();
+		}
+
+		$update_data = array(
+			'field_label' => $field_label,
+			'field_key'   => $field_key,
+			'field_type'  => $field_type,
+			'description' => $description,
+			'is_required' => $is_required,
+			'is_active'   => $is_active,
+			'sort_order'  => $sort_order,
+			'settings'    => $settings,
+		);
+
+		$result = NDS_HR_Custom_Fields::update_field( $field_id, $update_data );
+
+		if ( is_wp_error( $result ) ) {
+			$redirect_url = NDS_HR_Router::url(
+				'settings',
+				array(
+					'section'  => 'employees',
+					'cf_error' => rawurlencode( $result->get_error_message() ),
+				)
+			);
+			wp_safe_redirect( $redirect_url );
+			exit;
+		}
+
+		$current_uid = NDS_HR_Session::get_current_user_id();
+		NDS_HR_Audit_Logger::log(
+			'custom_field_updated',
+			'custom_fields',
+			$field_id,
+			array(
+				'field_label' => $existing->field_label,
+				'field_key'   => $existing->field_key,
+				'field_type'  => $existing->field_type,
+				'is_required' => $existing->is_required,
+				'is_active'   => $existing->is_active,
+				'sort_order'  => $existing->sort_order,
+			),
+			array(
+				'field_label' => $field_label,
+				'field_key'   => $field_key,
+				'field_type'  => $field_type,
+				'is_required' => $is_required,
+				'is_active'   => $is_active,
+				'sort_order'  => $sort_order,
+			),
+			$current_uid
+		);
+
+		$redirect_url = NDS_HR_Router::url(
+			'settings',
+			array(
+				'section'   => 'employees',
+				'cf_notice' => 'updated',
+			)
+		);
+		wp_safe_redirect( $redirect_url );
+		exit;
+	}
+
+	/**
+	 * Process Custom Field Activate / Deactivate Toggle.
+	 */
+	protected function process_toggle_custom_field_status() {
+		$field_id = isset( $_POST['field_id'] ) ? absint( $_POST['field_id'] ) : 0;
+		if ( ! $field_id ) {
+			wp_die( esc_html__( 'Invalid field ID.', 'nds-hr' ), '', array( 'response' => 400 ) );
+		}
+
+		$existing = NDS_HR_Custom_Fields::get_field( $field_id );
+		if ( ! $existing ) {
+			wp_die( esc_html__( 'Custom field not found.', 'nds-hr' ), '', array( 'response' => 404 ) );
+		}
+
+		$new_status = $existing->is_active ? 0 : 1;
+		$result     = NDS_HR_Custom_Fields::update_field( $field_id, array( 'is_active' => $new_status ) );
+
+		if ( ! is_wp_error( $result ) ) {
+			$current_uid = NDS_HR_Session::get_current_user_id();
+			$event_type  = $new_status ? 'custom_field_activated' : 'custom_field_deactivated';
+
+			NDS_HR_Audit_Logger::log(
+				$event_type,
+				'custom_fields',
+				$field_id,
+				array( 'is_active' => $existing->is_active ),
+				array( 'is_active' => $new_status, 'field_key' => $existing->field_key ),
+				$current_uid
+			);
+		}
+
+		$notice = $new_status ? 'activated' : 'deactivated';
+		$redirect_url = NDS_HR_Router::url(
+			'settings',
+			array(
+				'section'   => 'employees',
+				'cf_notice' => $notice,
+			)
+		);
+		wp_safe_redirect( $redirect_url );
+		exit;
+	}
+
+	/**
+	 * Process Custom Field Deletion.
+	 */
+	protected function process_delete_custom_field() {
+		$field_id = isset( $_POST['field_id'] ) ? absint( $_POST['field_id'] ) : 0;
+		if ( ! $field_id ) {
+			wp_die( esc_html__( 'Invalid field ID.', 'nds-hr' ), '', array( 'response' => 400 ) );
+		}
+
+		$existing = NDS_HR_Custom_Fields::get_field( $field_id );
+		if ( ! $existing ) {
+			wp_die( esc_html__( 'Custom field not found.', 'nds-hr' ), '', array( 'response' => 404 ) );
+		}
+
+		// Snapshot metadata before deletion
+		$old_meta = array(
+			'entity'      => $existing->entity,
+			'field_key'   => $existing->field_key,
+			'field_label' => $existing->field_label,
+			'field_type'  => $existing->field_type,
+		);
+
+		$deleted = NDS_HR_Custom_Fields::delete_field( $field_id );
+
+		if ( $deleted ) {
+			$current_uid = NDS_HR_Session::get_current_user_id();
+			NDS_HR_Audit_Logger::log(
+				'custom_field_deleted',
+				'custom_fields',
+				$field_id,
+				$old_meta,
+				array( 'deleted' => 1 ),
+				$current_uid
+			);
+		}
+
+		$redirect_url = NDS_HR_Router::url(
+			'settings',
+			array(
+				'section'   => 'employees',
+				'cf_notice' => 'deleted',
+			)
+		);
+		wp_safe_redirect( $redirect_url );
+		exit;
+	}
+
+	/**
+	 * Parse dynamic options array from POST.
+	 *
+	 * @return array<array{value: string, label: string}>
+	 */
+	protected function parse_dynamic_options_from_post() {
+		$options = array();
+
+		if ( empty( $_POST['option_labels'] ) || ! is_array( $_POST['option_labels'] ) ) {
+			return $options;
+		}
+
+		$labels = (array) $_POST['option_labels'];
+		$values = isset( $_POST['option_values'] ) && is_array( $_POST['option_values'] ) ? (array) $_POST['option_values'] : array();
+
+		foreach ( $labels as $idx => $raw_label ) {
+			$label = sanitize_text_field( wp_unslash( $raw_label ) );
+			if ( '' === $label ) {
+				continue;
+			}
+
+			$val = isset( $values[ $idx ] ) ? sanitize_key( wp_unslash( $values[ $idx ] ) ) : '';
+			if ( empty( $val ) ) {
+				// Generate safe key from label
+				$val = sanitize_key( str_replace( ' ', '_', strtolower( $label ) ) );
+			}
+
+			$options[] = array(
+				'value' => $val,
+				'label' => $label,
+			);
+		}
+
+		return $options;
+	}
+
+	/**
 	 * Render the Settings main workspace.
 	 *
 	 * @param string $section Active sub-section ('general', 'employees', 'attendance', 'leave', 'payroll', 'notifications', 'localization', 'security').
@@ -199,6 +504,8 @@ class NDS_HR_Admin_Settings {
 
 		$can_manage = NDS_HR_Permissions::can_manage_settings();
 		$is_saved   = isset( $_GET['saved'] ) && '1' === (string) $_GET['saved'];
+		$cf_notice  = isset( $_GET['cf_notice'] ) ? sanitize_key( wp_unslash( $_GET['cf_notice'] ) ) : '';
+		$cf_error   = isset( $_GET['cf_error'] ) ? sanitize_text_field( rawurldecode( wp_unslash( $_GET['cf_error'] ) ) ) : '';
 
 		// Load settings data
 		$general_settings = array(
@@ -211,6 +518,10 @@ class NDS_HR_Admin_Settings {
 		$localization_settings = array(
 			'default_language' => NDS_HR_Settings::get( 'localization_default_language', 'en' ),
 		);
+
+		// Load custom fields for employee entity
+		$employee_custom_fields = NDS_HR_Custom_Fields::get_entity_fields( 'employee', false );
+		$supported_field_types  = NDS_HR_Custom_Fields::get_supported_field_types();
 
 		include NDS_HR_PATH . 'templates/admin/settings.php';
 	}

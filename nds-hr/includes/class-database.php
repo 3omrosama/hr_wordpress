@@ -73,6 +73,14 @@ class NDS_HR_Database {
 		return self::get_table_name( 'settings' );
 	}
 
+	public static function custom_fields_table() {
+		return self::get_table_name( 'custom_fields' );
+	}
+
+	public static function custom_field_values_table() {
+		return self::get_table_name( 'custom_field_values' );
+	}
+
 	/**
 	 * Run on plugin activation or manual update.
 	 */
@@ -130,6 +138,60 @@ class NDS_HR_Database {
 		if ( version_compare( $from_version, '2.3.0', '<' ) ) {
 			self::upgrade_settings_table_v2_3();
 		}
+
+		// Phase 3.1 Custom Fields Engine Database Schema (v2.4.0)
+		if ( version_compare( $from_version, '2.4.0', '<' ) ) {
+			self::upgrade_custom_fields_tables_v2_4();
+		}
+	}
+
+	/**
+	 * Non-destructively create custom fields and custom field values tables for v2.4.0.
+	 */
+	protected static function upgrade_custom_fields_tables_v2_4() {
+		global $wpdb;
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+		$charset_collate           = $wpdb->get_charset_collate();
+		$custom_fields_table       = self::custom_fields_table();
+		$custom_field_values_table = self::custom_field_values_table();
+
+		// 1. Custom Fields Definition Table
+		$sql_custom_fields = "CREATE TABLE {$custom_fields_table} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			entity varchar(50) NOT NULL,
+			field_key varchar(100) NOT NULL,
+			field_label varchar(255) NOT NULL,
+			field_type varchar(50) NOT NULL,
+			description text DEFAULT NULL,
+			is_required tinyint(1) NOT NULL DEFAULT 0,
+			is_active tinyint(1) NOT NULL DEFAULT 1,
+			sort_order int(11) NOT NULL DEFAULT 0,
+			settings longtext DEFAULT NULL,
+			created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			PRIMARY KEY  (id),
+			UNIQUE KEY uq_entity_field_key (entity, field_key),
+			KEY idx_entity_active (entity, is_active),
+			KEY idx_sort_order (sort_order)
+		) {$charset_collate};";
+
+		// 2. Custom Field Values Table
+		$sql_custom_field_values = "CREATE TABLE {$custom_field_values_table} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			field_id bigint(20) unsigned NOT NULL,
+			entity_id bigint(20) unsigned NOT NULL,
+			value longtext DEFAULT NULL,
+			created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			PRIMARY KEY  (id),
+			UNIQUE KEY uq_field_entity (field_id, entity_id),
+			KEY idx_entity_id (entity_id),
+			KEY idx_field_id (field_id)
+		) {$charset_collate};";
+
+		dbDelta( $sql_custom_fields );
+		dbDelta( $sql_custom_field_values );
 	}
 
 	/**
@@ -665,12 +727,50 @@ class NDS_HR_Database {
 			KEY idx_autoload (autoload)
 		) {$charset_collate};";
 
+		// 6. Custom Fields table
+		$custom_fields_table = self::custom_fields_table();
+		$sql_custom_fields   = "CREATE TABLE {$custom_fields_table} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			entity varchar(50) NOT NULL,
+			field_key varchar(100) NOT NULL,
+			field_label varchar(255) NOT NULL,
+			field_type varchar(50) NOT NULL,
+			description text DEFAULT NULL,
+			is_required tinyint(1) NOT NULL DEFAULT 0,
+			is_active tinyint(1) NOT NULL DEFAULT 1,
+			sort_order int(11) NOT NULL DEFAULT 0,
+			settings longtext DEFAULT NULL,
+			created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			PRIMARY KEY  (id),
+			UNIQUE KEY uq_entity_field_key (entity, field_key),
+			KEY idx_entity_active (entity, is_active),
+			KEY idx_sort_order (sort_order)
+		) {$charset_collate};";
+
+		// 7. Custom Field Values table
+		$custom_field_values_table = self::custom_field_values_table();
+		$sql_custom_field_values   = "CREATE TABLE {$custom_field_values_table} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			field_id bigint(20) unsigned NOT NULL,
+			entity_id bigint(20) unsigned NOT NULL,
+			value longtext DEFAULT NULL,
+			created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			PRIMARY KEY  (id),
+			UNIQUE KEY uq_field_entity (field_id, entity_id),
+			KEY idx_entity_id (entity_id),
+			KEY idx_field_id (field_id)
+		) {$charset_collate};";
+
 		// Execute with dbDelta
 		dbDelta( $sql_departments );
 		dbDelta( $sql_positions );
 		dbDelta( $sql_employees );
 		dbDelta( $sql_audit_logs );
 		dbDelta( $sql_settings );
+		dbDelta( $sql_custom_fields );
+		dbDelta( $sql_custom_field_values );
 	}
 
 	/**

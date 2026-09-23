@@ -78,6 +78,13 @@ class NDS_HR_Plugin {
 	public $employees;
 
 	/**
+	 * Custom Fields core engine.
+	 *
+	 * @var NDS_HR_Custom_Fields
+	 */
+	public $custom_fields;
+
+	/**
 	 * Admin controller.
 	 *
 	 * @var NDS_HR_Admin|null
@@ -119,6 +126,7 @@ class NDS_HR_Plugin {
 		// Core Infrastructure
 		require_once NDS_HR_PATH . 'includes/class-database.php';
 		require_once NDS_HR_PATH . 'includes/class-settings.php';
+		require_once NDS_HR_PATH . 'includes/class-custom-fields.php';
 		require_once NDS_HR_PATH . 'includes/class-session.php';
 		require_once NDS_HR_PATH . 'includes/class-roles.php';
 		require_once NDS_HR_PATH . 'includes/class-permissions.php';
@@ -150,16 +158,17 @@ class NDS_HR_Plugin {
 	 * Initialize core components.
 	 */
 	protected function init_components() {
-		$this->database    = new NDS_HR_Database();
-		$this->roles       = new NDS_HR_Roles();
-		$this->permissions = new NDS_HR_Permissions();
-		$this->security    = new NDS_HR_Security();
-		$this->auth        = new NDS_HR_Auth();
-		$this->i18n        = new NDS_HR_I18n();
-		$this->audit       = new NDS_HR_Audit_Logger();
-		$this->employees   = new NDS_HR_Employees( $this );
-		$this->admin       = new NDS_HR_Admin( $this );
-		$this->portal      = new NDS_HR_Employee_Portal( $this );
+		$this->database      = new NDS_HR_Database();
+		$this->roles         = new NDS_HR_Roles();
+		$this->permissions   = new NDS_HR_Permissions();
+		$this->security      = new NDS_HR_Security();
+		$this->auth          = new NDS_HR_Auth();
+		$this->i18n          = new NDS_HR_I18n();
+		$this->audit         = new NDS_HR_Audit_Logger();
+		$this->custom_fields = new NDS_HR_Custom_Fields( $this );
+		$this->employees     = new NDS_HR_Employees( $this );
+		$this->admin         = new NDS_HR_Admin( $this );
+		$this->portal        = new NDS_HR_Employee_Portal( $this );
 	}
 
 	/**

@@ -25,7 +25,7 @@ if ( ! defined( 'WPINC' ) ) {
  * Current plugin version, database version, and routing version.
  */
 define( 'NDS_HR_VERSION', '2.0.0' );
-define( 'NDS_HR_DB_VERSION', '2.3.0' );
+define( 'NDS_HR_DB_VERSION', '2.4.0' );
 define( 'NDS_HR_ROUTING_VERSION', '2.2.0' );
 
 /**

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Employee, Department, Position, AuditLog } from '../types';
+import { Employee, Department, Position, AuditLog, CustomField } from '../types';
 import {
   Users,
   UserCheck,
@@ -22,6 +22,13 @@ import {
   Copy,
   Check,
   EyeOff,
+  Trash2,
+  Sliders,
+  AlertTriangle,
+  ListPlus,
+  ToggleLeft,
+  ToggleRight,
+  Layers,
 } from 'lucide-react';
 
 interface AdminViewProps {
@@ -57,6 +64,79 @@ export const AdminView: React.FC<AdminViewProps> = ({
     default_language: 'en',
   });
   const [settingsSavedNotice, setSettingsSavedNotice] = useState<string | null>(null);
+
+  // Custom Fields State (Employee Entity)
+  const [customFields, setCustomFields] = useState<CustomField[]>([
+    {
+      id: 1,
+      entity: 'employee',
+      field_key: 'fingerprint_code',
+      field_label: 'Fingerprint Device ID',
+      field_type: 'text',
+      description: 'Device biometric registration identifier for time clock sync.',
+      is_required: false,
+      is_active: true,
+      sort_order: 10,
+      settings: null,
+      created_at: '2026-03-01 10:00:00',
+      updated_at: '2026-03-01 10:00:00',
+    },
+    {
+      id: 2,
+      entity: 'employee',
+      field_key: 'work_shift',
+      field_label: 'Work Shift',
+      field_type: 'select',
+      description: 'Assigned daily working shift schedule.',
+      is_required: true,
+      is_active: true,
+      sort_order: 20,
+      settings: {
+        options: [
+          { value: 'morning_shift', label: 'Morning Shift (08:00 - 16:00)' },
+          { value: 'evening_shift', label: 'Evening Shift (16:00 - 00:00)' },
+          { value: 'night_shift', label: 'Night Shift (00:00 - 08:00)' },
+        ],
+      },
+      created_at: '2026-03-02 11:30:00',
+      updated_at: '2026-03-02 11:30:00',
+    },
+    {
+      id: 3,
+      entity: 'employee',
+      field_key: 'national_id_expiry',
+      field_label: 'National ID Expiry Date',
+      field_type: 'date',
+      description: 'Expiry date of official national identification or passport.',
+      is_required: false,
+      is_active: true,
+      sort_order: 30,
+      settings: null,
+      created_at: '2026-03-03 14:00:00',
+      updated_at: '2026-03-03 14:00:00',
+    },
+  ]);
+
+  const [isCfModalOpen, setIsCfModalOpen] = useState(false);
+  const [cfModalMode, setCfModalMode] = useState<'create' | 'edit'>('create');
+  const [cfDeleteModalField, setCfDeleteModalField] = useState<CustomField | null>(null);
+
+  const [cfFormData, setCfFormData] = useState({
+    id: 0,
+    field_label: '',
+    field_key: '',
+    field_type: 'text' as CustomField['field_type'],
+    description: '',
+    is_required: false,
+    is_active: true,
+    sort_order: 10,
+    original_type: 'text',
+    options: [{ label: '', value: '' }],
+    isManualKey: false,
+  });
+
+  const [cfSearchQuery, setCfSearchQuery] = useState('');
+
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState<number>(0);
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -209,6 +289,189 @@ export const AdminView: React.FC<AdminViewProps> = ({
       require_password_change: true,
     });
   };
+
+  // Custom Field Handlers
+  const handleOpenCfModal = (mode: 'create' | 'edit', field?: CustomField) => {
+    setCfModalMode(mode);
+    if (mode === 'edit' && field) {
+      const opts =
+        field.settings && Array.isArray(field.settings.options) && field.settings.options.length > 0
+          ? field.settings.options.map((o: any) => ({ label: o.label || '', value: o.value || '' }))
+          : [{ label: '', value: '' }];
+
+      setCfFormData({
+        id: field.id,
+        field_label: field.field_label,
+        field_key: field.field_key,
+        field_type: field.field_type,
+        description: field.description || '',
+        is_required: field.is_required,
+        is_active: field.is_active,
+        sort_order: field.sort_order,
+        original_type: field.field_type,
+        options: opts,
+        isManualKey: true,
+      });
+    } else {
+      setCfFormData({
+        id: 0,
+        field_label: '',
+        field_key: '',
+        field_type: 'text',
+        description: '',
+        is_required: false,
+        is_active: true,
+        sort_order: (customFields.length + 1) * 10,
+        original_type: 'text',
+        options: [{ label: '', value: '' }],
+        isManualKey: false,
+      });
+    }
+    setIsCfModalOpen(true);
+  };
+
+  const handleCfLabelChange = (val: string) => {
+    if (!cfFormData.isManualKey) {
+      const slug = val
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .replace(/\s+/g, '_')
+        .substring(0, 50);
+      setCfFormData({ ...cfFormData, field_label: val, field_key: slug });
+    } else {
+      setCfFormData({ ...cfFormData, field_label: val });
+    }
+  };
+
+  const handleAddOptionRow = () => {
+    setCfFormData({
+      ...cfFormData,
+      options: [...cfFormData.options, { label: '', value: '' }],
+    });
+  };
+
+  const handleRemoveOptionRow = (index: number) => {
+    const next = cfFormData.options.filter((_, i) => i !== index);
+    setCfFormData({
+      ...cfFormData,
+      options: next.length > 0 ? next : [{ label: '', value: '' }],
+    });
+  };
+
+  const handleOptionChange = (index: number, key: 'label' | 'value', val: string) => {
+    const next = [...cfFormData.options];
+    next[index][key] = val;
+    if (key === 'label' && !next[index].value) {
+      next[index].value = val.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    }
+    setCfFormData({ ...cfFormData, options: next });
+  };
+
+  const handleSaveCustomField = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanKey = cfFormData.field_key.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+    if (!cleanKey) return;
+
+    const isOptionType = ['select', 'multiselect', 'checkbox', 'radio'].includes(cfFormData.field_type);
+    const validOptions = isOptionType
+      ? cfFormData.options.filter((o) => o.label.trim() !== '').map((o) => ({
+          label: o.label.trim(),
+          value: o.value.trim() || o.label.trim().toLowerCase().replace(/[^a-z0-9]/g, '_'),
+        }))
+      : null;
+
+    const settingsObj = validOptions ? { options: validOptions } : null;
+
+    if (cfModalMode === 'create') {
+      // Check duplicate key
+      if (customFields.some((f) => f.field_key === cleanKey)) {
+        alert(isArabic ? 'مفتاح الحقل موجود مسبقاً.' : 'Field key already exists.');
+        return;
+      }
+
+      const newField: CustomField = {
+        id: Date.now(),
+        entity: 'employee',
+        field_key: cleanKey,
+        field_label: cfFormData.field_label.trim(),
+        field_type: cfFormData.field_type,
+        description: cfFormData.description.trim() || null,
+        is_required: cfFormData.is_required,
+        is_active: cfFormData.is_active,
+        sort_order: Number(cfFormData.sort_order) || 10,
+        settings: settingsObj,
+        created_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        updated_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
+      };
+
+      setCustomFields([...customFields, newField]);
+      setSettingsSavedNotice(isArabic ? 'تمت إضافة الحقل المخصص بنجاح.' : 'Custom field created successfully.');
+    } else {
+      setCustomFields(
+        customFields.map((f) => {
+          if (f.id === cfFormData.id) {
+            return {
+              ...f,
+              field_key: cleanKey,
+              field_label: cfFormData.field_label.trim(),
+              field_type: cfFormData.field_type,
+              description: cfFormData.description.trim() || null,
+              is_required: cfFormData.is_required,
+              is_active: cfFormData.is_active,
+              sort_order: Number(cfFormData.sort_order) || 10,
+              settings: settingsObj,
+              updated_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
+            };
+          }
+          return f;
+        })
+      );
+      setSettingsSavedNotice(isArabic ? 'تم تحديث الحقل المخصص بنجاح.' : 'Custom field updated successfully.');
+    }
+
+    setIsCfModalOpen(false);
+  };
+
+  const handleToggleCfStatus = (id: number) => {
+    setCustomFields(
+      customFields.map((f) => {
+        if (f.id === id) {
+          const nextActive = !f.is_active;
+          setSettingsSavedNotice(
+            nextActive
+              ? isArabic
+                ? `تم تفعيل الحقل "${f.field_label}".`
+                : `Custom field "${f.field_label}" activated.`
+              : isArabic
+              ? `تم تعطيل الحقل "${f.field_label}".`
+              : `Custom field "${f.field_label}" deactivated.`
+          );
+          return { ...f, is_active: nextActive, updated_at: new Date().toISOString().replace('T', ' ').substring(0, 19) };
+        }
+        return f;
+      })
+    );
+  };
+
+  const handleDeleteCustomField = (id: number) => {
+    const target = customFields.find((f) => f.id === id);
+    setCustomFields(customFields.filter((f) => f.id !== id));
+    setCfDeleteModalField(null);
+    if (target) {
+      setSettingsSavedNotice(
+        isArabic ? `تم حذف الحقل "${target.field_label}" نهائياً.` : `Custom field "${target.field_label}" deleted.`
+      );
+    }
+  };
+
+  const filteredCustomFields = customFields.filter((f) => {
+    if (!cfSearchQuery) return true;
+    return (
+      f.field_label.toLowerCase().includes(cfSearchQuery.toLowerCase()) ||
+      f.field_key.toLowerCase().includes(cfSearchQuery.toLowerCase()) ||
+      f.field_type.toLowerCase().includes(cfSearchQuery.toLowerCase())
+    );
+  });
 
   return (
     <div className="space-y-6" dir={isArabic ? 'rtl' : 'ltr'}>
@@ -1015,6 +1278,200 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 </div>
               )}
 
+              {/* EMPLOYEES SETTINGS: CUSTOM FIELDS ENGINE */}
+              {settingsSection === 'employees' && (
+                <div className="space-y-6">
+                  {/* Top Bar / Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 gap-3">
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                        <Sliders className="w-4 h-4 text-teal-600" />
+                        <span>{isArabic ? 'الحقول المخصصة للموظفين' : 'Employee Custom Fields'}</span>
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {isArabic
+                          ? 'إدارة السمات والحقول الإضافية لبيانات الموظفين بدون تعديل هيكل قاعدة البيانات.'
+                          : 'Define and manage custom employee attributes without altering core database tables.'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenCfModal('create')}
+                      className="px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg text-xs flex items-center gap-1.5 shadow-xs shrink-0 self-start sm:self-auto"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{isArabic ? '+ إضافة حقل مخصص' : '+ Add Custom Field'}</span>
+                    </button>
+                  </div>
+
+                  {/* Search / Filter Bar */}
+                  {customFields.length > 0 && (
+                    <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200">
+                      <Search className="w-3.5 h-3.5 text-slate-400" />
+                      <input
+                        type="text"
+                        value={cfSearchQuery}
+                        onChange={(e) => setCfSearchQuery(e.target.value)}
+                        placeholder={isArabic ? 'بحث في الحقول المخصصة...' : 'Search custom fields by label, key, or type...'}
+                        className="bg-transparent border-none text-xs text-slate-700 focus:outline-none w-full"
+                      />
+                      {cfSearchQuery && (
+                        <button
+                          onClick={() => setCfSearchQuery('')}
+                          className="text-slate-400 hover:text-slate-600 text-xs px-1"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Fields Table or Empty State */}
+                  {filteredCustomFields.length === 0 ? (
+                    <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50 space-y-3">
+                      <div className="w-12 h-12 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center mx-auto">
+                        <Layers className="w-6 h-6" />
+                      </div>
+                      <h4 className="text-sm font-bold text-slate-800">
+                        {customFields.length === 0
+                          ? isArabic
+                            ? 'لا توجد حقول مخصصة للموظفين حالياً.'
+                            : 'No custom employee fields yet.'
+                          : isArabic
+                          ? 'لا توجد نتائج مطابقة للبحث.'
+                          : 'No matching custom fields found.'}
+                      </h4>
+                      <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                        {isArabic
+                          ? 'أنشئ حقولاً مخصصة لجمع معلومات إضافية عن الموظفين دون المساس بالبنية الأساسية.'
+                          : 'Create custom fields to capture additional employee information without changing the core employee structure.'}
+                      </p>
+                      {customFields.length === 0 && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenCfModal('create')}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-semibold"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>{isArabic ? '+ إضافة حقل مخصص' : '+ Add Custom Field'}</span>
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                      <table className="w-full text-xs text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+                            <th className="py-2.5 px-3">{isArabic ? 'اسم الحقل' : 'Field Label'}</th>
+                            <th className="py-2.5 px-3">{isArabic ? 'المفتاح البرمجي' : 'Field Key'}</th>
+                            <th className="py-2.5 px-3">{isArabic ? 'النوع' : 'Type'}</th>
+                            <th className="py-2.5 px-3 text-center">{isArabic ? 'إلزامي' : 'Required'}</th>
+                            <th className="py-2.5 px-3 text-center">{isArabic ? 'الحالة' : 'Status'}</th>
+                            <th className="py-2.5 px-3 text-center">{isArabic ? 'الترتيب' : 'Order'}</th>
+                            <th className="py-2.5 px-3 text-right">{isArabic ? 'الإجراءات' : 'Actions'}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {filteredCustomFields.map((field) => (
+                            <tr key={field.id} className="hover:bg-slate-50/75 transition-colors">
+                              <td className="py-2.5 px-3 font-semibold text-slate-900">
+                                <div>{field.field_label}</div>
+                                {field.description && (
+                                  <div className="text-[11px] font-normal text-slate-400 mt-0.5 max-w-xs truncate">
+                                    {field.description}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3">
+                                <code className="font-mono text-[11px] bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded border border-slate-200">
+                                  {field.field_key}
+                                </code>
+                              </td>
+                              <td className="py-2.5 px-3 text-slate-700 capitalize">
+                                <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[11px]">
+                                  {field.field_type.replace('_', ' ')}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                {field.is_required ? (
+                                  <span className="bg-red-50 text-red-700 border border-red-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                    {isArabic ? 'نعم' : 'Yes'}
+                                  </span>
+                                ) : (
+                                  <span className="bg-slate-100 text-slate-600 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                                    {isArabic ? 'لا' : 'No'}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                {field.is_active ? (
+                                  <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    {isArabic ? 'نشط' : 'Active'}
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-500 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                    {isArabic ? 'معطل' : 'Inactive'}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 text-center text-slate-500 font-mono">
+                                {field.sort_order}
+                              </td>
+                              <td className="py-2.5 px-3 text-right">
+                                <div className="inline-flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenCfModal('edit', field)}
+                                    className="p-1 text-slate-600 hover:text-teal-700 hover:bg-slate-100 rounded"
+                                    title={isArabic ? 'تعديل الحقل' : 'Edit Field'}
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleCfStatus(field.id)}
+                                    className={`p-1 rounded ${
+                                      field.is_active
+                                        ? 'text-amber-600 hover:bg-amber-50'
+                                        : 'text-emerald-600 hover:bg-emerald-50'
+                                    }`}
+                                    title={
+                                      field.is_active
+                                        ? isArabic
+                                          ? 'تعطيل الحقل'
+                                          : 'Deactivate Field'
+                                        : isArabic
+                                        ? 'تفعيل الحقل'
+                                        : 'Activate Field'
+                                    }
+                                  >
+                                    {field.is_active ? (
+                                      <ToggleRight className="w-4 h-4" />
+                                    ) : (
+                                      <ToggleLeft className="w-4 h-4" />
+                                    )}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setCfDeleteModalField(field)}
+                                    className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
+                                    title={isArabic ? 'حذف الحقل' : 'Delete Field'}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {settingsSection === 'security' && (
                 <div className="text-center py-12 space-y-3">
                   <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center mx-auto">
@@ -1031,7 +1488,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 </div>
               )}
 
-              {['employees', 'attendance', 'leave', 'payroll', 'notifications'].includes(settingsSection) && (
+              {['attendance', 'leave', 'payroll', 'notifications'].includes(settingsSection) && (
                 <div className="text-center py-12 space-y-3">
                   <div className="w-12 h-12 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center mx-auto">
                     <Clock className="w-6 h-6" />
@@ -1560,6 +2017,284 @@ export const AdminView: React.FC<AdminViewProps> = ({
               >
                 <ExternalLink className="w-3.5 h-3.5" />
                 <span>{isArabic ? 'عرض بوابة الموظف كـ هذا المستخدم' : 'Open Portal As Employee'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ADD / EDIT CUSTOM FIELD */}
+      {isCfModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center">
+                  <Sliders className="w-4 h-4" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900">
+                  {cfModalMode === 'create'
+                    ? isArabic
+                      ? 'إضافة حقل مخصص جديد'
+                      : 'Add New Custom Field'
+                    : isArabic
+                    ? 'تعديل الحقل المخصص'
+                    : 'Edit Custom Field'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsCfModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCustomField} className="p-6 space-y-4 text-xs">
+              {/* Field Label */}
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  {isArabic ? 'اسم الحقل (Label) *' : 'Field Label *'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={cfFormData.field_label}
+                  onChange={(e) => handleCfLabelChange(e.target.value)}
+                  placeholder={isArabic ? 'مثال: رقم البصمة، الوردية' : 'e.g. Fingerprint Code, Work Shift'}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Field Key */}
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  {isArabic ? 'المفتاح البرمجي (Field Key) *' : 'Field Key (Programmatic ID) *'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  pattern="^[a-z0-9][a-z0-9_]{1,99}$"
+                  value={cfFormData.field_key}
+                  onChange={(e) =>
+                    setCfFormData({ ...cfFormData, field_key: e.target.value, isManualKey: true })
+                  }
+                  placeholder="e.g. fingerprint_code"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none font-mono"
+                />
+                <span className="text-[11px] text-slate-400 block mt-0.5">
+                  {isArabic
+                    ? 'أحرف إنجليزية صغيرة مع شرطات سفلية فقط (مثل: work_shift).'
+                    : 'Lowercase alphanumeric with underscores (e.g. work_shift).'}
+                </span>
+              </div>
+
+              {/* Field Type */}
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  {isArabic ? 'نوع الحقل (Type) *' : 'Field Type *'}
+                </label>
+                <select
+                  value={cfFormData.field_type}
+                  onChange={(e) =>
+                    setCfFormData({
+                      ...cfFormData,
+                      field_type: e.target.value as CustomField['field_type'],
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none bg-white"
+                >
+                  <option value="text">{isArabic ? 'نص قصير (Text)' : 'Text'}</option>
+                  <option value="textarea">{isArabic ? 'نص طويل (Textarea)' : 'Long Text (Textarea)'}</option>
+                  <option value="number">{isArabic ? 'رقم (Number)' : 'Number'}</option>
+                  <option value="email">{isArabic ? 'بريد إلكتروني (Email)' : 'Email'}</option>
+                  <option value="phone">{isArabic ? 'هاتف (Phone)' : 'Phone'}</option>
+                  <option value="date">{isArabic ? 'تاريخ (Date)' : 'Date'}</option>
+                  <option value="select">{isArabic ? 'قائمة منسدلة (Select)' : 'Dropdown (Select)'}</option>
+                  <option value="multiselect">{isArabic ? 'تحديد متعدد (Multi Select)' : 'Multi Select'}</option>
+                  <option value="checkbox">{isArabic ? 'خانات اختيار (Checkbox)' : 'Checkbox (Multi Choice)'}</option>
+                  <option value="radio">{isArabic ? 'أزرار اختيار أحادي (Radio)' : 'Radio Buttons'}</option>
+                  <option value="yes_no">{isArabic ? 'مفتاح نعم / لا (Yes / No)' : 'Yes / No Toggle'}</option>
+                </select>
+              </div>
+
+              {/* Type change warning in edit mode */}
+              {cfModalMode === 'edit' && cfFormData.original_type !== cfFormData.field_type && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-[11px] flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <strong>{isArabic ? 'تنبيه:' : 'Notice:'}</strong>{' '}
+                    {isArabic
+                      ? 'تغيير نوع الحقل قد يؤثر على كيفية عرض القيم الحالية المسجلة للموظفين. لن يتم حذف البيانات المخزنة.'
+                      : 'Changing field type may affect how existing stored values are interpreted. Data will not be automatically deleted.'}
+                  </div>
+                </div>
+              )}
+
+              {/* Options configuration for select / multiselect / checkbox / radio */}
+              {['select', 'multiselect', 'checkbox', 'radio'].includes(cfFormData.field_type) && (
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-slate-800">
+                      {isArabic ? 'خيارات القائمة' : 'Field Options'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleAddOptionRow}
+                      className="px-2 py-1 bg-white hover:bg-slate-100 text-teal-700 border border-slate-300 rounded font-semibold text-[11px] flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>{isArabic ? 'إضافة خيار' : '+ Add Option'}</span>
+                    </button>
+                  </div>
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                    {cfFormData.options.map((opt, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={opt.label}
+                          onChange={(e) => handleOptionChange(idx, 'label', e.target.value)}
+                          placeholder={isArabic ? 'اسم الخيار (مثال: الوردية الصباحية)' : 'Option label (e.g. Morning Shift)'}
+                          className="flex-1 px-2.5 py-1.5 border border-slate-300 rounded text-xs bg-white focus:ring-1 focus:ring-teal-500 focus:outline-none"
+                        />
+                        <input
+                          type="text"
+                          value={opt.value}
+                          onChange={(e) => handleOptionChange(idx, 'value', e.target.value)}
+                          placeholder={isArabic ? 'القيمة البرمجية' : 'Value (e.g. morning_shift)'}
+                          className="flex-1 px-2.5 py-1.5 border border-slate-300 rounded text-xs font-mono bg-white focus:ring-1 focus:ring-teal-500 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveOptionRow(idx)}
+                          className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
+                          title={isArabic ? 'حذف الخيار' : 'Remove option'}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Description */}
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  {isArabic ? 'الوصف / نص المساعدة' : 'Description / Help Text'}
+                </label>
+                <textarea
+                  rows={2}
+                  value={cfFormData.description}
+                  onChange={(e) => setCfFormData({ ...cfFormData, description: e.target.value })}
+                  placeholder={isArabic ? 'إرشادات توضيحية لمدخلي البيانات...' : 'Optional guidance for managers...'}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Sort Order, Required & Active */}
+              <div className="grid grid-cols-3 gap-3 items-center pt-2">
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">
+                    {isArabic ? 'الترتيب' : 'Order'}
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={cfFormData.sort_order}
+                    onChange={(e) => setCfFormData({ ...cfFormData, sort_order: Number(e.target.value) })}
+                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none font-mono"
+                  />
+                </div>
+
+                <div className="pt-4 flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="modal_is_required"
+                    checked={cfFormData.is_required}
+                    onChange={(e) => setCfFormData({ ...cfFormData, is_required: e.target.checked })}
+                    className="rounded text-teal-600 focus:ring-teal-500"
+                  />
+                  <label htmlFor="modal_is_required" className="font-semibold text-slate-700 cursor-pointer">
+                    {isArabic ? 'إلزامي' : 'Required'}
+                  </label>
+                </div>
+
+                <div className="pt-4 flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="modal_is_active"
+                    checked={cfFormData.is_active}
+                    onChange={(e) => setCfFormData({ ...cfFormData, is_active: e.target.checked })}
+                    className="rounded text-teal-600 focus:ring-teal-500"
+                  />
+                  <label htmlFor="modal_is_active" className="font-semibold text-slate-700 cursor-pointer">
+                    {isArabic ? 'نشط' : 'Active'}
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsCfModalOpen(false)}
+                  className="px-4 py-2 border border-slate-300 rounded-lg font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  {isArabic ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg shadow-xs"
+                >
+                  {isArabic ? 'حفظ الحقل المخصص' : 'Save Custom Field'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: DELETE CUSTOM FIELD CONFIRMATION */}
+      {cfDeleteModalField && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">
+                  {isArabic ? 'حذف الحقل المخصص؟' : 'Delete Custom Field?'}
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  {isArabic ? 'هل أنت متأكد من رغبتك في حذف الحقل' : 'Are you sure you want to permanently delete'}{' '}
+                  <strong className="text-slate-900">{cfDeleteModalField.field_label}</strong> (
+                  <code className="font-mono text-[11px]">{cfDeleteModalField.field_key}</code>)؟
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-[11px] leading-relaxed">
+              <strong>{isArabic ? 'تحذير:' : 'Warning:'}</strong>{' '}
+              {isArabic
+                ? 'لا يمكن التراجع عن هذا الإجراء. سيتم مسح وحذف كافة البيانات المسجلة تحت هذا الحقل لجميع الموظفين نهائياً.'
+                : 'This action cannot be undone. All existing employee data stored under this field will be permanently erased.'}
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setCfDeleteModalField(null)}
+                className="px-3.5 py-1.5 border border-slate-300 rounded-lg font-semibold text-slate-700 hover:bg-slate-50 text-xs"
+              >
+                {isArabic ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteCustomField(cfDeleteModalField.id)}
+                className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg text-xs shadow-xs"
+              >
+                {isArabic ? 'حذف الحقل نهائياً' : 'Permanently Delete'}
               </button>
             </div>
           </div>
