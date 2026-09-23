@@ -45,7 +45,18 @@ export const AdminView: React.FC<AdminViewProps> = ({
   onSelectEmployeeForPortal,
   isArabic,
 }) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'employees' | 'audit' | 'blueprint'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'employees' | 'audit' | 'settings' | 'blueprint'>('dashboard');
+  const [settingsSection, setSettingsSection] = useState<'general' | 'employees' | 'attendance' | 'leave' | 'payroll' | 'notifications' | 'localization' | 'security'>('general');
+  const [generalSettings, setGeneralSettings] = useState({
+    company_name: 'NDS HR Demo Corp',
+    company_email: 'hr@example.com',
+    company_phone: '+20 100 000 0000',
+    company_address: 'Cairo, Egypt',
+  });
+  const [localizationSettings, setLocalizationSettings] = useState({
+    default_language: 'en',
+  });
+  const [settingsSavedNotice, setSettingsSavedNotice] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState<number>(0);
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -245,6 +256,14 @@ export const AdminView: React.FC<AdminViewProps> = ({
               }`}
             >
               {isArabic ? 'سجل التدقيق' : 'Audit Logs'}
+            </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                activeTab === 'settings' ? 'bg-white text-teal-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              {isArabic ? 'الإعدادات' : 'Settings'}
             </button>
             <button
               onClick={() => setActiveTab('blueprint')}
@@ -805,6 +824,231 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 &bull; wp_nds_hr_salary_structures<br />
                 &bull; wp_nds_hr_payslips
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: SETTINGS (Phase 1) */}
+      {activeTab === 'settings' && (
+        <div className="space-y-6">
+          {/* Top Notice */}
+          {settingsSavedNotice && (
+            <div className="bg-teal-50 border border-teal-200 text-teal-800 px-4 py-3 rounded-xl flex items-center justify-between shadow-xs">
+              <div className="flex items-center gap-2 text-xs font-semibold">
+                <Check className="w-4 h-4 text-teal-600" />
+                <span>{settingsSavedNotice}</span>
+              </div>
+              <button
+                onClick={() => setSettingsSavedNotice(null)}
+                className="text-teal-600 hover:text-teal-800 text-sm font-bold"
+              >
+                &times;
+              </button>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
+            {/* Left Nav */}
+            <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs space-y-1">
+              <div className="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                {isArabic ? 'وحدات الإعدادات' : 'Configuration Modules'}
+              </div>
+              {[
+                { id: 'general', label: isArabic ? 'الإعدادات العامة' : 'General', desc: 'Company profile & contact' },
+                { id: 'employees', label: isArabic ? 'الموظفون' : 'Employees', desc: 'Employee policies' },
+                { id: 'attendance', label: isArabic ? 'الحضور والانصراف' : 'Attendance', desc: 'Shifts & timings' },
+                { id: 'leave', label: isArabic ? 'الإجازات' : 'Leave', desc: 'Leave types & balances' },
+                { id: 'payroll', label: isArabic ? 'الرواتب' : 'Payroll', desc: 'Salary structures' },
+                { id: 'notifications', label: isArabic ? 'الإشعارات' : 'Notifications', desc: 'Alerts & emails' },
+                { id: 'localization', label: isArabic ? 'اللغة والتعريب' : 'Localization', desc: 'Language & direction' },
+                { id: 'security', label: isArabic ? 'الأمان' : 'Security', desc: 'Access controls' },
+              ].map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => setSettingsSection(m.id as any)}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-medium transition-colors flex flex-col ${
+                    settingsSection === m.id
+                      ? 'bg-teal-50 text-teal-700 font-semibold border border-teal-100'
+                      : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <span className="text-slate-900 font-semibold">{m.label}</span>
+                  <span className="text-[10px] text-slate-400 font-normal">{m.desc}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Right Pane */}
+            <div className="md:col-span-3 bg-white border border-slate-200 rounded-xl p-6 shadow-xs">
+              {settingsSection === 'general' && (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">
+                      {isArabic ? 'الإعدادات العامة' : 'General Settings'}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {isArabic ? 'إدارة تفاصيل المنشأة وبيانات التواصل الرسمية.' : 'Manage your organization profile and official contact details.'}
+                    </p>
+                  </div>
+
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      setSettingsSavedNotice(isArabic ? 'تم حفظ الإعدادات العامة بنجاح.' : 'General settings saved successfully.');
+                    }}
+                    className="space-y-4 max-w-xl text-xs"
+                  >
+                    <div>
+                      <label className="block text-slate-700 font-semibold mb-1">
+                        {isArabic ? 'اسم الشركة / المنشأة' : 'Company Name'}
+                      </label>
+                      <input
+                        type="text"
+                        value={generalSettings.company_name}
+                        onChange={(e) => setGeneralSettings({ ...generalSettings, company_name: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-700 font-semibold mb-1">
+                        {isArabic ? 'البريد الإلكتروني الرسمي' : 'Company Email'}
+                      </label>
+                      <input
+                        type="email"
+                        value={generalSettings.company_email}
+                        onChange={(e) => setGeneralSettings({ ...generalSettings, company_email: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-700 font-semibold mb-1">
+                        {isArabic ? 'رقم الهاتف الرسمي' : 'Company Phone'}
+                      </label>
+                      <input
+                        type="text"
+                        value={generalSettings.company_phone}
+                        onChange={(e) => setGeneralSettings({ ...generalSettings, company_phone: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-700 font-semibold mb-1">
+                        {isArabic ? 'العنوان' : 'Company Address'}
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={generalSettings.company_address}
+                        onChange={(e) => setGeneralSettings({ ...generalSettings, company_address: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="pt-2 flex justify-end">
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg shadow-xs transition-colors"
+                      >
+                        {isArabic ? 'حفظ التغييرات' : 'Save Changes'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {settingsSection === 'localization' && (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">
+                      {isArabic ? 'إعدادات اللغة والتعريب' : 'Localization Settings'}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {isArabic ? 'تحديد اللغة الافتراضية واتجاه النصوص للنظام.' : 'Configure default application language and regional presentation preferences.'}
+                    </p>
+                  </div>
+
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      setSettingsSavedNotice(isArabic ? 'تم حفظ إعدادات اللغة بنجاح.' : 'Localization settings saved successfully.');
+                    }}
+                    className="space-y-4 max-w-xl text-xs"
+                  >
+                    <div>
+                      <label className="block text-slate-700 font-semibold mb-1">
+                        {isArabic ? 'اللغة الافتراضية' : 'Default Language'}
+                      </label>
+                      <select
+                        value={localizationSettings.default_language}
+                        onChange={(e) => setLocalizationSettings({ default_language: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none bg-white"
+                      >
+                        <option value="en">English (LTR)</option>
+                        <option value="ar">العربية — Arabic (RTL)</option>
+                      </select>
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        {isArabic ? 'تحدد هذه القيمة اللغة الافتراضية للمستخدمين الجلسات الجديدة.' : 'This setting represents the default language for new user sessions.'}
+                      </p>
+                    </div>
+
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-1">
+                      <div className="font-semibold text-slate-800">
+                        {isArabic ? 'اتجاه النص (Direction)' : 'Text Direction'}
+                      </div>
+                      <p className="text-slate-500 text-[11px]">
+                        {isArabic ? 'يتم ضبط الاتجاه تلقائيًا بناءً على اللغة المختارة (LTR للإنجليزية و RTL للعربية).' : 'Direction is automatic based on the selected language (LTR for English, RTL for Arabic).'}
+                      </p>
+                    </div>
+
+                    <div className="pt-2 flex justify-end">
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg shadow-xs transition-colors"
+                      >
+                        {isArabic ? 'حفظ التغييرات' : 'Save Changes'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {settingsSection === 'security' && (
+                <div className="text-center py-12 space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center mx-auto">
+                    <Shield className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-base font-bold text-slate-800">
+                    {isArabic ? 'إعدادات الأمان' : 'Security Settings'}
+                  </h4>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                    {isArabic
+                      ? 'ستتوفر إعدادات الأمان وسياسات الجلسات في إصدار قادم.'
+                      : 'Security settings will be available in a future release.'}
+                  </p>
+                </div>
+              )}
+
+              {['employees', 'attendance', 'leave', 'payroll', 'notifications'].includes(settingsSection) && (
+                <div className="text-center py-12 space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center mx-auto">
+                    <Clock className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-base font-bold text-slate-800 capitalize">
+                    {settingsSection} {isArabic ? 'الإعدادات' : 'Settings'}
+                  </h4>
+                  <span className="inline-block bg-amber-100 text-amber-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                    {isArabic ? 'لم تُهيأ بعد' : 'Not Configured Yet'}
+                  </span>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                    {isArabic
+                      ? 'سيتم تمكين خيارات التهيئة وسياسات العمل لهذه الوحدة في إصدار قادم.'
+                      : `Configuration parameters and business policies for the ${settingsSection} module will be available in an upcoming release.`}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

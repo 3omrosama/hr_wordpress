@@ -43,20 +43,29 @@ class NDS_HR_Admin {
 	public $roles_controller;
 
 	/**
+	 * Admin Settings controller.
+	 *
+	 * @var NDS_HR_Admin_Settings
+	 */
+	public $settings_controller;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param NDS_HR_Plugin $plugin
 	 */
 	public function __construct( NDS_HR_Plugin $plugin ) {
-		$this->plugin           = $plugin;
-		$this->dashboard        = new NDS_HR_Admin_Dashboard( $plugin );
-		$this->employees        = new NDS_HR_Admin_Employees( $plugin );
-		$this->roles_controller = new NDS_HR_Admin_Roles( $plugin );
+		$this->plugin              = $plugin;
+		$this->dashboard           = new NDS_HR_Admin_Dashboard( $plugin );
+		$this->employees           = new NDS_HR_Admin_Employees( $plugin );
+		$this->roles_controller    = new NDS_HR_Admin_Roles( $plugin );
+		$this->settings_controller = new NDS_HR_Admin_Settings( $plugin );
 
 		add_action( 'admin_menu', array( $this, 'register_admin_menus' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
 		add_action( 'admin_init', array( $this->employees, 'handle_form_submissions' ) );
 		add_action( 'admin_init', array( $this->roles_controller, 'handle_form_submissions' ) );
+		add_action( 'admin_init', array( $this->settings_controller, 'handle_form_submissions' ) );
 	}
 
 	/**
@@ -187,5 +196,16 @@ class NDS_HR_Admin {
 		$total_pages = ceil( $total_logs / $per_page );
 
 		include NDS_HR_PATH . 'templates/admin/audit-logs.php';
+	}
+
+	/**
+	 * Render the Settings admin view.
+	 *
+	 * @param string $section
+	 */
+	public function render_settings_page( $section = 'general' ) {
+		if ( $this->settings_controller ) {
+			$this->settings_controller->render_settings_page( $section );
+		}
 	}
 }

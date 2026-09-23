@@ -181,6 +181,13 @@ $plugin = nds_hr();
 						<?php esc_html_e( 'Audit Logs', 'nds-hr' ); ?>
 					</a>
 				<?php endif; ?>
+
+				<?php if ( NDS_HR_Permissions::can_view_settings() ) : ?>
+					<a href="<?php echo esc_url( NDS_HR_Router::url( 'settings' ) ); ?>" class="<?php echo 'settings' === $current_tab ? 'active' : ''; ?>">
+						<span class="dashicons dashicons-admin-generic"></span>
+						<?php esc_html_e( 'Settings', 'nds-hr' ); ?>
+					</a>
+				<?php endif; ?>
 			</nav>
 		</div>
 
@@ -234,6 +241,13 @@ $plugin = nds_hr();
 			case 'audit-logs':
 				if ( $plugin->admin ) {
 					$plugin->admin->render_audit_logs_page();
+				}
+				break;
+
+			case 'settings':
+				if ( $plugin->admin ) {
+					$section = isset( $_GET['section'] ) ? sanitize_key( $_GET['section'] ) : ( get_query_var( 'nds_hr_section' ) ? sanitize_key( get_query_var( 'nds_hr_section' ) ) : 'general' );
+					$plugin->admin->render_settings_page( $section );
 				}
 				break;
 

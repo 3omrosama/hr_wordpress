@@ -118,6 +118,7 @@ class NDS_HR_Plugin {
 	protected function load_dependencies() {
 		// Core Infrastructure
 		require_once NDS_HR_PATH . 'includes/class-database.php';
+		require_once NDS_HR_PATH . 'includes/class-settings.php';
 		require_once NDS_HR_PATH . 'includes/class-session.php';
 		require_once NDS_HR_PATH . 'includes/class-roles.php';
 		require_once NDS_HR_PATH . 'includes/class-permissions.php';
@@ -136,6 +137,7 @@ class NDS_HR_Plugin {
 		require_once NDS_HR_PATH . 'admin/dashboard/class-admin-dashboard.php';
 		require_once NDS_HR_PATH . 'admin/employees/class-admin-employees.php';
 		require_once NDS_HR_PATH . 'admin/settings/class-admin-roles.php';
+		require_once NDS_HR_PATH . 'admin/settings/class-admin-settings.php';
 		require_once NDS_HR_PATH . 'admin/class-admin.php';
 
 		// Frontend Portal

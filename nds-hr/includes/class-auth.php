@@ -207,6 +207,9 @@ class NDS_HR_Auth {
 			if ( isset( $_POST['nds_hr_roles_action'] ) && $plugin->admin && $plugin->admin->roles_controller ) {
 				$plugin->admin->roles_controller->handle_form_submissions();
 			}
+			if ( isset( $_POST['nds_hr_settings_action'] ) && $plugin->admin && $plugin->admin->settings_controller ) {
+				$plugin->admin->settings_controller->handle_form_submissions();
+			}
 		}
 
 		if ( isset( $_GET['nds_hr_action'] ) && $plugin->admin && $plugin->admin->employees ) {

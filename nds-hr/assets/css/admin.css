@@ -1253,4 +1253,29 @@
 	background-color: var(--nds-hr-danger-bg);
 }
 
+/* Settings Workspace */
+.nds-hr-settings-workspace {
+	max-width: 1200px;
+	margin: 0 auto;
+}
+
+.nds-hr-settings-nav-item:hover {
+	background-color: var(--nds-hr-slate-50);
+	color: var(--nds-hr-slate-900);
+}
+
+.nds-hr-settings-nav-item.active {
+	background-color: var(--nds-hr-primary-light) !important;
+	color: var(--nds-hr-primary) !important;
+	border-color: #CCFBF1 !important;
+}
+
+[dir="rtl"] .nds-hr-settings-nav-item {
+	text-align: right;
+}
+
+[dir="rtl"] .nds-hr-settings-grid {
+	direction: rtl;
+}
+
 

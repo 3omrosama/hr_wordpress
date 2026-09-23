@@ -69,6 +69,10 @@ class NDS_HR_Database {
 		return self::get_table_name( 'sessions' );
 	}
 
+	public static function settings_table() {
+		return self::get_table_name( 'settings' );
+	}
+
 	/**
 	 * Run on plugin activation or manual update.
 	 */
@@ -120,6 +124,75 @@ class NDS_HR_Database {
 		// Phase 2.2 Salary Currency & Optional Compensation (v2.2.0)
 		if ( version_compare( $from_version, '2.2.0', '<' ) ) {
 			self::upgrade_employees_table_v2_2();
+		}
+
+		// Phase 3.0 Settings Framework & Infrastructure (v2.3.0)
+		if ( version_compare( $from_version, '2.3.0', '<' ) ) {
+			self::upgrade_settings_table_v2_3();
+		}
+	}
+
+	/**
+	 * Non-destructively create and initialize the settings table for v2.3.0.
+	 */
+	protected static function upgrade_settings_table_v2_3() {
+		global $wpdb;
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+		$charset_collate = $wpdb->get_charset_collate();
+		$settings_table  = self::settings_table();
+
+		$sql = "CREATE TABLE {$settings_table} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			setting_key varchar(191) NOT NULL,
+			setting_value longtext DEFAULT NULL,
+			setting_type varchar(50) NOT NULL DEFAULT 'string',
+			autoload tinyint(1) NOT NULL DEFAULT 1,
+			created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			PRIMARY KEY  (id),
+			UNIQUE KEY uq_setting_key (setting_key),
+			KEY idx_autoload (autoload)
+		) {$charset_collate};";
+
+		dbDelta( $sql );
+
+		// Seed initial default settings if empty
+		self::seed_settings_defaults();
+	}
+
+	/**
+	 * Seed initial default settings values.
+	 */
+	public static function seed_settings_defaults() {
+		global $wpdb;
+
+		$settings_table = self::settings_table();
+		$count = $wpdb->get_var( "SELECT COUNT(*) FROM {$settings_table}" );
+
+		if ( (int) $count === 0 ) {
+			$defaults = array(
+				array( 'general_company_name', 'NDS HR Demo Corp', 'string', 1 ),
+				array( 'general_company_email', get_option( 'admin_email', 'hr@example.com' ), 'string', 1 ),
+				array( 'general_company_phone', '+20 100 000 0000', 'string', 1 ),
+				array( 'general_company_address', 'Cairo, Egypt', 'string', 1 ),
+				array( 'localization_default_language', 'en', 'string', 1 ),
+			);
+
+			foreach ( $defaults as $d ) {
+				$wpdb->insert(
+					$settings_table,
+					array(
+						'setting_key'   => $d[0],
+						'setting_value' => $d[1],
+						'setting_type'  => $d[2],
+						'autoload'      => $d[3],
+						'created_at'    => current_time( 'mysql' ),
+						'updated_at'    => current_time( 'mysql' ),
+					),
+					array( '%s', '%s', '%s', '%d', '%s', '%s' )
+				);
+			}
 		}
 	}
 
@@ -577,11 +650,27 @@ class NDS_HR_Database {
 			KEY created_at (created_at)
 		) {$charset_collate};";
 
+		// 5. Settings table
+		$settings_table = self::settings_table();
+		$sql_settings   = "CREATE TABLE {$settings_table} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			setting_key varchar(191) NOT NULL,
+			setting_value longtext DEFAULT NULL,
+			setting_type varchar(50) NOT NULL DEFAULT 'string',
+			autoload tinyint(1) NOT NULL DEFAULT 1,
+			created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			PRIMARY KEY  (id),
+			UNIQUE KEY uq_setting_key (setting_key),
+			KEY idx_autoload (autoload)
+		) {$charset_collate};";
+
 		// Execute with dbDelta
 		dbDelta( $sql_departments );
 		dbDelta( $sql_positions );
 		dbDelta( $sql_employees );
 		dbDelta( $sql_audit_logs );
+		dbDelta( $sql_settings );
 	}
 
 	/**

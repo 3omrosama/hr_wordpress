@@ -69,6 +69,7 @@ class NDS_HR_Roles {
 				'capabilities' => array(
 					'nds_hr_view_audit_logs' => __( 'View Audit & Compliance Logs', 'nds-hr' ),
 					'nds_hr_manage_roles'    => __( 'Manage Roles & Permissions', 'nds-hr' ),
+					'nds_hr_view_settings'   => __( 'View System Global Settings', 'nds-hr' ),
 					'nds_hr_manage_settings' => __( 'Manage System Global Settings', 'nds-hr' ),
 				),
 			),

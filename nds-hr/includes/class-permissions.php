@@ -31,6 +31,13 @@ class NDS_HR_Permissions {
 	 * @return bool
 	 */
 	public static function can( $capability, $hr_user_id = null ) {
+		// Normalize capability aliases
+		if ( 'settings.view' === $capability ) {
+			$capability = 'nds_hr_view_settings';
+		} elseif ( 'settings.manage' === $capability ) {
+			$capability = 'nds_hr_manage_settings';
+		}
+
 		// 1. If no specific HR user requested, check the active NDS HR session
 		if ( null === $hr_user_id ) {
 			$hr_user = NDS_HR_Session::get_authenticated_user();
@@ -300,5 +307,25 @@ class NDS_HR_Permissions {
 	 */
 	public static function can_manage_departments( $hr_user_id = null ) {
 		return self::can( 'nds_hr_manage_departments', $hr_user_id );
+	}
+
+	/**
+	 * Check if user can view settings.
+	 *
+	 * @param int|null $hr_user_id
+	 * @return bool
+	 */
+	public static function can_view_settings( $hr_user_id = null ) {
+		return self::can( 'nds_hr_view_settings', $hr_user_id ) || self::can( 'nds_hr_manage_settings', $hr_user_id );
+	}
+
+	/**
+	 * Check if user can manage/modify settings.
+	 *
+	 * @param int|null $hr_user_id
+	 * @return bool
+	 */
+	public static function can_manage_settings( $hr_user_id = null ) {
+		return self::can( 'nds_hr_manage_settings', $hr_user_id );
 	}
 }

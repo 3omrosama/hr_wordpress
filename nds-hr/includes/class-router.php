@@ -20,9 +20,10 @@ class NDS_HR_Router {
 	/**
 	 * Query variable constants.
 	 */
-	const QUERY_VAR_ROUTE  = 'nds_hr_route';
-	const QUERY_VAR_TAB    = 'nds_hr_tab';
-	const QUERY_VAR_PORTAL = 'nds_hr_portal';
+	const QUERY_VAR_ROUTE   = 'nds_hr_route';
+	const QUERY_VAR_TAB     = 'nds_hr_tab';
+	const QUERY_VAR_SECTION = 'nds_hr_section';
+	const QUERY_VAR_PORTAL  = 'nds_hr_portal';
 
 	/**
 	 * Check if WordPress installation home URL is in a subdirectory ending with '/hr'.
@@ -120,6 +121,16 @@ class NDS_HR_Router {
 				$base_url = self::get_hr_base_url() . 'reset-password/';
 				break;
 
+			case 'settings':
+				$section = isset( $args['section'] ) ? sanitize_key( $args['section'] ) : '';
+				if ( ! empty( $section ) && 'general' !== $section ) {
+					$base_url = self::get_hr_base_url() . 'settings/' . $section . '/';
+				} else {
+					$base_url = self::get_hr_base_url() . 'settings/';
+				}
+				unset( $args['section'] );
+				break;
+
 			case 'employee':
 			case 'portal':
 				$tab = isset( $args['tab'] ) ? sanitize_key( $args['tab'] ) : '';
@@ -168,6 +179,8 @@ class NDS_HR_Router {
 		add_rewrite_rule( '^hr/login/?$', 'index.php?nds_hr_route=login', 'top' );
 		add_rewrite_rule( '^hr/logout/?$', 'index.php?nds_hr_route=logout', 'top' );
 		add_rewrite_rule( '^hr/reset-password/?$', 'index.php?nds_hr_route=reset_password', 'top' );
+		add_rewrite_rule( '^hr/settings/([a-z0-9_-]+)/?$', 'index.php?nds_hr_route=admin&nds_hr_tab=settings&nds_hr_section=$matches[1]', 'top' );
+		add_rewrite_rule( '^hr/settings/?$', 'index.php?nds_hr_route=admin&nds_hr_tab=settings&nds_hr_section=general', 'top' );
 		add_rewrite_rule( '^hr/([a-z0-9_-]+)/?$', 'index.php?nds_hr_route=admin&nds_hr_tab=$matches[1]', 'top' );
 		add_rewrite_rule( '^hr/?$', 'index.php?nds_hr_route=admin', 'top' );
 		add_rewrite_rule( '^login/?$', 'index.php?nds_hr_route=login', 'top' );
@@ -176,6 +189,8 @@ class NDS_HR_Router {
 		add_rewrite_rule( '^setup/?$', 'index.php?nds_hr_route=setup', 'top' );
 		add_rewrite_rule( '^logout/?$', 'index.php?nds_hr_route=logout', 'top' );
 		add_rewrite_rule( '^reset-password/?$', 'index.php?nds_hr_route=reset_password', 'top' );
+		add_rewrite_rule( '^settings/([a-z0-9_-]+)/?$', 'index.php?nds_hr_route=admin&nds_hr_tab=settings&nds_hr_section=$matches[1]', 'top' );
+		add_rewrite_rule( '^settings/?$', 'index.php?nds_hr_route=admin&nds_hr_tab=settings&nds_hr_section=general', 'top' );
 
 		// 3. Employee portal rules
 		add_rewrite_rule( '^employee/([a-z0-9_-]+)/?$', 'index.php?nds_hr_portal=1&nds_hr_tab=$matches[1]', 'top' );
@@ -193,6 +208,7 @@ class NDS_HR_Router {
 	public static function register_query_vars( $vars ) {
 		$vars[] = self::QUERY_VAR_ROUTE;
 		$vars[] = self::QUERY_VAR_TAB;
+		$vars[] = self::QUERY_VAR_SECTION;
 		$vars[] = self::QUERY_VAR_PORTAL;
 		$vars[] = 'nds_hr_login';
 		return $vars;
@@ -261,7 +277,18 @@ class NDS_HR_Router {
 			return;
 		}
 
-		// 7. HR ADMIN SUB-TABS: /hr/{tab}/
+		// 7. HR ADMIN SETTINGS: /hr/settings/{section}/ or /hr/settings/
+		if ( preg_match( '#^hr/settings(?:/([a-z0-9_-]+))?$#i', $path_lower, $matches ) ||
+		     preg_match( '#^hr/settings(?:/([a-z0-9_-]+))?$#i', $full_lower, $matches ) ||
+		     ( $is_hr_sub && preg_match( '#^settings(?:/([a-z0-9_-]+))?$#i', $path_lower, $matches ) ) ) {
+			$wp->query_vars[ self::QUERY_VAR_ROUTE ]   = 'admin';
+			$wp->query_vars[ self::QUERY_VAR_TAB ]     = 'settings';
+			$wp->query_vars[ self::QUERY_VAR_SECTION ] = ! empty( $matches[1] ) ? sanitize_key( $matches[1] ) : 'general';
+			$wp->matched_rule                          = '^hr/settings(?:/([a-z0-9_-]+))?/?$';
+			return;
+		}
+
+		// 8. HR ADMIN SUB-TABS: /hr/{tab}/
 		if ( preg_match( '#^hr/([a-z0-9_-]+)$#i', $path_lower, $matches ) ||
 		     preg_match( '#^hr/([a-z0-9_-]+)$#i', $full_lower, $matches ) ) {
 			$wp->query_vars[ self::QUERY_VAR_ROUTE ] = 'admin';
