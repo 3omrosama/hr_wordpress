@@ -1710,156 +1710,193 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 </div>
               )}
 
-              {/* Dynamic Employee Custom Fields (Phase 2C-1) */}
-              {customFields.filter((f) => f.is_active && f.entity === 'employee').length > 0 && (
-                <div className="bg-slate-50/70 border border-slate-200 rounded-xl p-4 space-y-4">
-                  <div className="font-semibold text-slate-900 flex items-center justify-between pb-2 border-b border-slate-200">
-                    <div className="flex items-center gap-1.5">
-                      <Sliders className="w-4 h-4 text-teal-600" />
-                      <span>{isArabic ? 'الحقول المخصصة الإضافية' : 'Custom Fields'}</span>
-                    </div>
-                    <span className="text-[10px] text-teal-800 bg-teal-100 font-semibold px-2 py-0.5 rounded">
-                      {isArabic ? 'مخصصة' : 'Extended Fields'}
-                    </span>
-                  </div>
+              {/* Dynamic Employee Custom Fields (Phase 2C-1: Visually integrated as normal form fields) */}
+              {customFields
+                .filter((f) => f.is_active && f.entity === 'employee')
+                .length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {customFields
+                    .filter((f) => f.is_active && f.entity === 'employee')
+                    .sort((a, b) => a.sort_order - b.sort_order)
+                    .map((field) => {
+                      const fieldKey = field.field_key;
+                      const fieldVal = customFieldFormValues[fieldKey];
+                      const fieldError = customFieldErrors[fieldKey];
+                      const rawOpts = field.settings?.options || [];
+                      const opts: Array<{ value: string; label: string }> = Array.isArray(rawOpts)
+                        ? rawOpts.map((o: any) =>
+                            typeof o === 'string'
+                              ? { value: o, label: o }
+                              : { value: String(o.value ?? ''), label: String(o.label ?? o.value ?? '') }
+                          )
+                        : [];
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {customFields
-                      .filter((f) => f.is_active && f.entity === 'employee')
-                      .sort((a, b) => a.sort_order - b.sort_order)
-                      .map((field) => {
-                        const fieldKey = field.field_key;
-                        const fieldVal = customFieldFormValues[fieldKey];
-                        const fieldError = customFieldErrors[fieldKey];
-                        const rawOpts = field.settings?.options || [];
-                        const opts: Array<{ value: string; label: string }> = Array.isArray(rawOpts)
-                          ? rawOpts.map((o: any) =>
-                              typeof o === 'string'
-                                ? { value: o, label: o }
-                                : { value: String(o.value ?? ''), label: String(o.label ?? o.value ?? '') }
-                            )
-                          : [];
+                      return (
+                        <div
+                          key={field.id}
+                          className={
+                            field.field_type === 'textarea' || field.field_type === 'multiselect'
+                              ? 'md:col-span-2'
+                              : ''
+                          }
+                        >
+                          <label className="block text-slate-700 font-semibold mb-1">
+                            {field.field_label}
+                            {field.is_required && <span className="text-red-600 ms-1">*</span>}
+                          </label>
 
-                        return (
-                          <div
-                            key={field.id}
-                            className={`space-y-1 ${
-                              field.field_type === 'textarea' || field.field_type === 'multiselect'
-                                ? 'md:col-span-2'
-                                : ''
-                            }`}
-                          >
-                            <label className="block text-slate-700 font-semibold text-xs">
-                              {field.field_label}
-                              {field.is_required && <span className="text-red-600 ms-1">*</span>}
-                            </label>
+                          {/* Render based on field_type */}
+                          {field.field_type === 'text' && (
+                            <input
+                              type="text"
+                              value={fieldVal || ''}
+                              onChange={(e) =>
+                                setCustomFieldFormValues({ ...customFieldFormValues, [fieldKey]: e.target.value })
+                              }
+                              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none text-xs bg-white ${
+                                fieldError ? 'border-red-400 bg-red-50/20' : 'border-slate-300'
+                              }`}
+                              placeholder={field.field_label}
+                            />
+                          )}
 
-                            {/* Render based on field_type */}
-                            {field.field_type === 'text' && (
-                              <input
-                                type="text"
-                                value={fieldVal || ''}
-                                onChange={(e) =>
-                                  setCustomFieldFormValues({ ...customFieldFormValues, [fieldKey]: e.target.value })
-                                }
-                                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none text-xs bg-white ${
-                                  fieldError ? 'border-red-400' : 'border-slate-300'
-                                }`}
-                                placeholder={field.field_label}
-                              />
-                            )}
+                          {field.field_type === 'textarea' && (
+                            <textarea
+                              rows={2}
+                              value={fieldVal || ''}
+                              onChange={(e) =>
+                                setCustomFieldFormValues({ ...customFieldFormValues, [fieldKey]: e.target.value })
+                              }
+                              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none text-xs bg-white ${
+                                fieldError ? 'border-red-400 bg-red-50/20' : 'border-slate-300'
+                              }`}
+                              placeholder={field.field_label}
+                            />
+                          )}
 
-                            {field.field_type === 'textarea' && (
-                              <textarea
-                                rows={2}
-                                value={fieldVal || ''}
-                                onChange={(e) =>
-                                  setCustomFieldFormValues({ ...customFieldFormValues, [fieldKey]: e.target.value })
-                                }
-                                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none text-xs bg-white ${
-                                  fieldError ? 'border-red-400' : 'border-slate-300'
-                                }`}
-                                placeholder={field.field_label}
-                              />
-                            )}
+                          {field.field_type === 'number' && (
+                            <input
+                              type="number"
+                              value={fieldVal ?? ''}
+                              onChange={(e) =>
+                                setCustomFieldFormValues({ ...customFieldFormValues, [fieldKey]: e.target.value })
+                              }
+                              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none text-xs bg-white ${
+                                fieldError ? 'border-red-400 bg-red-50/20' : 'border-slate-300'
+                              }`}
+                              placeholder="0"
+                            />
+                          )}
 
-                            {field.field_type === 'number' && (
-                              <input
-                                type="number"
-                                value={fieldVal ?? ''}
-                                onChange={(e) =>
-                                  setCustomFieldFormValues({ ...customFieldFormValues, [fieldKey]: e.target.value })
-                                }
-                                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none text-xs bg-white ${
-                                  fieldError ? 'border-red-400' : 'border-slate-300'
-                                }`}
-                                placeholder="0"
-                              />
-                            )}
+                          {field.field_type === 'email' && (
+                            <input
+                              type="email"
+                              value={fieldVal || ''}
+                              onChange={(e) =>
+                                setCustomFieldFormValues({ ...customFieldFormValues, [fieldKey]: e.target.value })
+                              }
+                              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none text-xs bg-white ${
+                                fieldError ? 'border-red-400 bg-red-50/20' : 'border-slate-300'
+                              }`}
+                              placeholder="user@example.com"
+                            />
+                          )}
 
-                            {field.field_type === 'email' && (
-                              <input
-                                type="email"
-                                value={fieldVal || ''}
-                                onChange={(e) =>
-                                  setCustomFieldFormValues({ ...customFieldFormValues, [fieldKey]: e.target.value })
-                                }
-                                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none text-xs bg-white ${
-                                  fieldError ? 'border-red-400' : 'border-slate-300'
-                                }`}
-                                placeholder="user@example.com"
-                              />
-                            )}
+                          {field.field_type === 'phone' && (
+                            <input
+                              type="tel"
+                              value={fieldVal || ''}
+                              onChange={(e) =>
+                                setCustomFieldFormValues({ ...customFieldFormValues, [fieldKey]: e.target.value })
+                              }
+                              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none text-xs bg-white ${
+                                fieldError ? 'border-red-400 bg-red-50/20' : 'border-slate-300'
+                              }`}
+                              placeholder="+966 50 000 0000"
+                            />
+                          )}
 
-                            {field.field_type === 'phone' && (
-                              <input
-                                type="tel"
-                                value={fieldVal || ''}
-                                onChange={(e) =>
-                                  setCustomFieldFormValues({ ...customFieldFormValues, [fieldKey]: e.target.value })
-                                }
-                                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none text-xs bg-white ${
-                                  fieldError ? 'border-red-400' : 'border-slate-300'
-                                }`}
-                                placeholder="+966 50 000 0000"
-                              />
-                            )}
+                          {field.field_type === 'date' && (
+                            <input
+                              type="date"
+                              value={fieldVal || ''}
+                              onChange={(e) =>
+                                setCustomFieldFormValues({ ...customFieldFormValues, [fieldKey]: e.target.value })
+                              }
+                              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none text-xs bg-white ${
+                                fieldError ? 'border-red-400 bg-red-50/20' : 'border-slate-300'
+                              }`}
+                            />
+                          )}
 
-                            {field.field_type === 'date' && (
-                              <input
-                                type="date"
-                                value={fieldVal || ''}
-                                onChange={(e) =>
-                                  setCustomFieldFormValues({ ...customFieldFormValues, [fieldKey]: e.target.value })
-                                }
-                                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none text-xs bg-white ${
-                                  fieldError ? 'border-red-400' : 'border-slate-300'
-                                }`}
-                              />
-                            )}
+                          {field.field_type === 'select' && (
+                            <select
+                              value={fieldVal || ''}
+                              onChange={(e) =>
+                                setCustomFieldFormValues({ ...customFieldFormValues, [fieldKey]: e.target.value })
+                              }
+                              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none text-xs bg-white ${
+                                fieldError ? 'border-red-400 bg-red-50/20' : 'border-slate-300'
+                              }`}
+                            >
+                              <option value="">{isArabic ? '-- اختر --' : '-- Select --'}</option>
+                              {opts.map((opt, oIdx) => (
+                                <option key={oIdx} value={opt.value}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                          )}
 
-                            {field.field_type === 'select' && (
-                              <select
-                                value={fieldVal || ''}
-                                onChange={(e) =>
-                                  setCustomFieldFormValues({ ...customFieldFormValues, [fieldKey]: e.target.value })
-                                }
-                                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none text-xs bg-white ${
-                                  fieldError ? 'border-red-400' : 'border-slate-300'
-                                }`}
-                              >
-                                <option value="">{isArabic ? '-- اختر --' : '-- Select --'}</option>
-                                {opts.map((opt, oIdx) => (
-                                  <option key={oIdx} value={opt.value}>
-                                    {opt.label}
-                                  </option>
-                                ))}
-                              </select>
-                            )}
+                          {field.field_type === 'multiselect' && (
+                            <div className="space-y-1.5">
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-2 bg-slate-50 border border-slate-200 rounded-lg">
+                                {opts.map((opt, oIdx) => {
+                                  const currentArr = Array.isArray(fieldVal) ? fieldVal : [];
+                                  const isChecked = currentArr.includes(opt.value);
+                                  return (
+                                    <label key={oIdx} className="flex items-center gap-1.5 cursor-pointer text-xs">
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={(e) => {
+                                          const updated = e.target.checked
+                                            ? [...currentArr, opt.value]
+                                            : currentArr.filter((x: string) => x !== opt.value);
+                                          setCustomFieldFormValues({
+                                            ...customFieldFormValues,
+                                            [fieldKey]: updated,
+                                          });
+                                        }}
+                                        className="text-teal-600 rounded"
+                                      />
+                                      <span className="text-slate-700">{opt.label}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
 
-                            {field.field_type === 'multiselect' && (
-                              <div className="space-y-1.5">
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-2 bg-white border border-slate-200 rounded-lg">
+                          {field.field_type === 'checkbox' && (
+                            <div className="space-y-1.5">
+                              {opts.length === 0 ? (
+                                <label className="flex items-center gap-2 cursor-pointer pt-1">
+                                  <input
+                                    type="checkbox"
+                                    checked={Boolean(fieldVal)}
+                                    onChange={(e) =>
+                                      setCustomFieldFormValues({
+                                        ...customFieldFormValues,
+                                        [fieldKey]: e.target.checked ? 1 : 0,
+                                      })
+                                    }
+                                    className="text-teal-600 rounded"
+                                  />
+                                  <span className="text-xs text-slate-700">{field.field_label}</span>
+                                </label>
+                              ) : (
+                                <div className="grid grid-cols-2 gap-2 p-2 bg-slate-50 border border-slate-200 rounded-lg">
                                   {opts.map((opt, oIdx) => {
                                     const currentArr = Array.isArray(fieldVal) ? fieldVal : [];
                                     const isChecked = currentArr.includes(opt.value);
@@ -1884,129 +1921,82 @@ export const AdminView: React.FC<AdminViewProps> = ({
                                     );
                                   })}
                                 </div>
-                              </div>
-                            )}
+                              )}
+                            </div>
+                          )}
 
-                            {field.field_type === 'checkbox' && (
-                              <div className="space-y-1.5">
-                                {opts.length === 0 ? (
-                                  <label className="flex items-center gap-2 cursor-pointer pt-1">
-                                    <input
-                                      type="checkbox"
-                                      checked={Boolean(fieldVal)}
-                                      onChange={(e) =>
-                                        setCustomFieldFormValues({
-                                          ...customFieldFormValues,
-                                          [fieldKey]: e.target.checked ? 1 : 0,
-                                        })
-                                      }
-                                      className="text-teal-600 rounded"
-                                    />
-                                    <span className="text-xs text-slate-700">{field.field_label}</span>
-                                  </label>
-                                ) : (
-                                  <div className="grid grid-cols-2 gap-2 p-2 bg-white border border-slate-200 rounded-lg">
-                                    {opts.map((opt, oIdx) => {
-                                      const currentArr = Array.isArray(fieldVal) ? fieldVal : [];
-                                      const isChecked = currentArr.includes(opt.value);
-                                      return (
-                                        <label key={oIdx} className="flex items-center gap-1.5 cursor-pointer text-xs">
-                                          <input
-                                            type="checkbox"
-                                            checked={isChecked}
-                                            onChange={(e) => {
-                                              const updated = e.target.checked
-                                                ? [...currentArr, opt.value]
-                                                : currentArr.filter((x: string) => x !== opt.value);
-                                              setCustomFieldFormValues({
-                                                ...customFieldFormValues,
-                                                [fieldKey]: updated,
-                                              });
-                                            }}
-                                            className="text-teal-600 rounded"
-                                          />
-                                          <span className="text-slate-700">{opt.label}</span>
-                                        </label>
-                                      );
-                                    })}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            {field.field_type === 'radio' && (
-                              <div className="flex flex-wrap gap-3 pt-1">
-                                {opts.map((opt, oIdx) => (
-                                  <label key={oIdx} className="flex items-center gap-1.5 cursor-pointer text-xs">
-                                    <input
-                                      type="radio"
-                                      name={`cf_radio_${fieldKey}`}
-                                      value={opt.value}
-                                      checked={fieldVal === opt.value}
-                                      onChange={() =>
-                                        setCustomFieldFormValues({
-                                          ...customFieldFormValues,
-                                          [fieldKey]: opt.value,
-                                        })
-                                      }
-                                      className="text-teal-600"
-                                    />
-                                    <span className="text-slate-700">{opt.label}</span>
-                                  </label>
-                                ))}
-                              </div>
-                            )}
-
-                            {field.field_type === 'yes_no' && (
-                              <div className="flex items-center gap-4 pt-1">
-                                <label className="flex items-center gap-1.5 cursor-pointer text-xs">
+                          {field.field_type === 'radio' && (
+                            <div className="flex flex-wrap gap-3 pt-1">
+                              {opts.map((opt, oIdx) => (
+                                <label key={oIdx} className="flex items-center gap-1.5 cursor-pointer text-xs">
                                   <input
                                     type="radio"
-                                    name={`cf_yesno_${fieldKey}`}
-                                    value="1"
-                                    checked={fieldVal === 1 || fieldVal === '1'}
+                                    name={`cf_radio_${fieldKey}`}
+                                    value={opt.value}
+                                    checked={fieldVal === opt.value}
                                     onChange={() =>
                                       setCustomFieldFormValues({
                                         ...customFieldFormValues,
-                                        [fieldKey]: 1,
+                                        [fieldKey]: opt.value,
                                       })
                                     }
                                     className="text-teal-600"
                                   />
-                                  <span className="text-slate-700">{isArabic ? 'نعم' : 'Yes'}</span>
+                                  <span className="text-slate-700">{opt.label}</span>
                                 </label>
-                                <label className="flex items-center gap-1.5 cursor-pointer text-xs">
-                                  <input
-                                    type="radio"
-                                    name={`cf_yesno_${fieldKey}`}
-                                    value="0"
-                                    checked={fieldVal === 0 || fieldVal === '0'}
-                                    onChange={() =>
-                                      setCustomFieldFormValues({
-                                        ...customFieldFormValues,
-                                        [fieldKey]: 0,
-                                      })
-                                    }
-                                    className="text-teal-600"
-                                  />
-                                  <span className="text-slate-700">{isArabic ? 'لا' : 'No'}</span>
-                                </label>
-                              </div>
-                            )}
+                              ))}
+                            </div>
+                          )}
 
-                            {/* Help description */}
-                            {field.description && (
-                              <p className="text-[11px] text-slate-500">{field.description}</p>
-                            )}
+                          {field.field_type === 'yes_no' && (
+                            <div className="flex items-center gap-4 pt-1">
+                              <label className="flex items-center gap-1.5 cursor-pointer text-xs">
+                                <input
+                                  type="radio"
+                                  name={`cf_yesno_${fieldKey}`}
+                                  value="1"
+                                  checked={fieldVal === 1 || fieldVal === '1'}
+                                  onChange={() =>
+                                    setCustomFieldFormValues({
+                                      ...customFieldFormValues,
+                                      [fieldKey]: 1,
+                                    })
+                                  }
+                                  className="text-teal-600"
+                                />
+                                <span className="text-slate-700">{isArabic ? 'نعم' : 'Yes'}</span>
+                              </label>
+                              <label className="flex items-center gap-1.5 cursor-pointer text-xs">
+                                <input
+                                  type="radio"
+                                  name={`cf_yesno_${fieldKey}`}
+                                  value="0"
+                                  checked={fieldVal === 0 || fieldVal === '0'}
+                                  onChange={() =>
+                                    setCustomFieldFormValues({
+                                      ...customFieldFormValues,
+                                      [fieldKey]: 0,
+                                    })
+                                  }
+                                  className="text-teal-600"
+                                />
+                                <span className="text-slate-700">{isArabic ? 'لا' : 'No'}</span>
+                              </label>
+                            </div>
+                          )}
 
-                            {/* Field error */}
-                            {fieldError && (
-                              <p className="text-[11px] text-red-600 font-medium">{fieldError}</p>
-                            )}
-                          </div>
-                        );
-                      })}
-                  </div>
+                          {/* Help description */}
+                          {field.description && (
+                            <p className="text-[11px] text-slate-500 mt-0.5">{field.description}</p>
+                          )}
+
+                          {/* Field error */}
+                          {fieldError && (
+                            <p className="text-[11px] text-red-600 font-medium mt-0.5">{fieldError}</p>
+                          )}
+                        </div>
+                      );
+                    })}
                 </div>
               )}
 
